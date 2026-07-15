@@ -1,0 +1,17 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "age-gui",
+  "outputfilename": "age-gui",
+  "frontend:install": "npm install",
+  "frontend:build": "npm run build",
+  "frontend:dev:watcher": "npm run dev",
+  "frontend:dev:serverUrl": "auto",
+  "author": {
+    "name": "Dawid Roszman",
+    "email": "dawidroszman@gmail.com"
+  },
+  "info": {
+    "productName": "Age GUI",
+    "comments": "Share secrets securely, without the command line."
+  }
+}
