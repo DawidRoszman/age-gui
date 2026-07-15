@@ -128,7 +128,18 @@ jobs:
       # still exits 0, so without this the release would silently ship no
       # installer at all.
       - name: Install NSIS
-        run: choco install nsis -y --no-progress
+        shell: pwsh
+        run: |
+          choco install nsis -y --no-progress
+          # Chocolatey deploys NSIS to Program Files but leaves makensis off the
+          # PATH of later steps, which is exactly the situation wails shrugs at.
+          "C:\Program Files (x86)\NSIS" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      # Fail here, where the message is unambiguous, rather than letting the
+      # build "succeed" and inferring the cause from a missing file afterwards.
+      - name: Verify makensis is on PATH
+        shell: pwsh
+        run: makensis /VERSION
 
       # -webview2 download makes the installer fetch the WebView2 runtime if the
       # machine lacks it, which is what makes this genuinely double-click
