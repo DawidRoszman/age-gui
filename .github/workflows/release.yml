@@ -124,6 +124,16 @@ jobs:
           TAG="${{ inputs.tag || github.ref_name }}"
           echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
 
+      # wails.json carries a placeholder version, and Wails bakes it into the
+      # exe's file properties and the installer. Without this the package would
+      # be called 1.2.3 while reporting 0.0.0 in its own properties.
+      - name: Stamp version into wails.json
+        shell: bash
+        run: |
+          jq --arg v "${{ steps.v.outputs.version }}" '.info.productVersion = $v' wails.json > wails.tmp
+          mv wails.tmp wails.json
+          grep productVersion wails.json
+
       - name: Install Wails
         run: go install github.com/wailsapp/wails/v2/cmd/wails@${{ env.WAILS_VERSION }}
 
@@ -200,6 +210,15 @@ jobs:
         run: |
           TAG="${{ inputs.tag || github.ref_name }}"
           echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+
+      # Wails writes this into the bundle's Info.plist, which is where macOS
+      # reads the version it shows in Finder's Get Info.
+      - name: Stamp version into wails.json
+        shell: bash
+        run: |
+          jq --arg v "${{ steps.v.outputs.version }}" '.info.productVersion = $v' wails.json > wails.tmp
+          mv wails.tmp wails.json
+          grep productVersion wails.json
 
       - name: Install Wails
         run: go install github.com/wailsapp/wails/v2/cmd/wails@${{ env.WAILS_VERSION }}
