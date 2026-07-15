@@ -120,8 +120,13 @@ Two traps worth knowing:
    everything works.** It probes for the 4.0 package name. Ignore it; build with
    the tag. It also mis-reports npm. (See wails#4457.)
 
-On Debian/Ubuntu, `libwebkit2gtk-4.0-dev` exists, so the tag can be omitted —
-which is why CI does not pass it.
+**Ubuntu 24.04+ is in the same position** — it dropped `libwebkit2gtk-4.0-dev`
+and ships only 4.1 — so use `libwebkit2gtk-4.1-dev` and the same tag there:
+
+    sudo apt-get install libgtk-3-dev libwebkit2gtk-4.1-dev
+    wails build -tags webkit2_41
+
+Only older distros that still carry `libwebkit2gtk-4.0-dev` can omit it.
 
 ### Cross-platform
 

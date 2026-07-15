@@ -1,0 +1,7 @@
+Placeholder. Vite copies everything in frontend/public/ into frontend/dist/ on
+every build, which is the only reason frontend/dist/gitkeep survives.
+
+main.go embeds frontend/dist with //go:embed, and that fails to compile if the
+directory is empty. Vite empties dist/ on each build, so without this file the
+placeholder would disappear the first time anyone ran a build and every
+subsequent `go build` on a clean tree would fail. See .gitignore.
