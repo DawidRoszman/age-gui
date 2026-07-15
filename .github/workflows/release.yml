@@ -1,0 +1,262 @@
+name: Release
+
+# Push a tag to publish:
+#
+#     git tag v1.0.0 && git push origin v1.0.0
+#
+# Each OS builds on its own runner because cgo does not cross-compile — the same
+# reason the CI matrix is shaped this way. The release is only created once all
+# three succeed, so a half-published release with a missing platform is not
+# possible.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to build and release (e.g. v1.0.0)"
+        required: true
+
+permissions:
+  contents: write # required to create the release and upload assets
+
+env:
+  GO_VERSION: "1.26"
+  NODE_VERSION: "24"
+  WAILS_VERSION: v2.12.0
+
+jobs:
+  linux:
+    name: Linux packages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Version from tag
+        id: v
+        shell: bash
+        run: |
+          TAG="${{ inputs.tag || github.ref_name }}"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev
+
+      - name: Install tools
+        run: |
+          go install github.com/wailsapp/wails/v2/cmd/wails@${{ env.WAILS_VERSION }}
+          go install github.com/goreleaser/nfpm/v2/cmd/nfpm@latest
+
+      # Ubuntu 24.04 ships only webkit2gtk-4.1, so the tag is mandatory here
+      # exactly as it is on Fedora 40+.
+      - name: Build
+        run: wails build -tags webkit2_41 -ldflags "-s -w"
+
+      - name: Verify the binary exists
+        run: test -x build/bin/age-gui
+
+      - name: Package
+        env:
+          VERSION: ${{ steps.v.outputs.version }}
+        run: |
+          mkdir -p dist
+          nfpm package -f build/linux/nfpm.yaml -p deb -t dist/
+          nfpm package -f build/linux/nfpm.yaml -p rpm -t dist/
+
+          # Plain archive for everyone not on apt or dnf.
+          install -Dm755 build/bin/age-gui                 "stage/age-gui-$VERSION/age-gui"
+          install -Dm644 build/linux/age-gui.desktop       "stage/age-gui-$VERSION/age-gui.desktop"
+          install -Dm644 build/appicon.png                 "stage/age-gui-$VERSION/age-gui.png"
+          install -Dm644 README.md                         "stage/age-gui-$VERSION/README.md"
+          tar -czf "dist/age-gui-$VERSION-linux-amd64.tar.gz" -C stage "age-gui-$VERSION"
+
+      # nfpm and wails both report success in situations that produce nothing
+      # useful, so assert the artefacts are really there rather than trusting
+      # an exit code.
+      - name: Verify packages
+        shell: bash
+        run: |
+          ls -lh dist/
+          for f in dist/*.deb dist/*.rpm dist/*.tar.gz; do
+            test -s "$f" || { echo "::error::missing or empty: $f"; exit 1; }
+          done
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux
+          path: dist/*
+          if-no-files-found: error
+
+  windows:
+    name: Windows installer
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Version from tag
+        id: v
+        shell: bash
+        run: |
+          TAG="${{ inputs.tag || github.ref_name }}"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Install Wails
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@${{ env.WAILS_VERSION }}
+
+      # makensis builds the installer. Wails only *warns* when it is missing and
+      # still exits 0, so without this the release would silently ship no
+      # installer at all.
+      - name: Install NSIS
+        run: choco install nsis -y --no-progress
+
+      # -webview2 download makes the installer fetch the WebView2 runtime if the
+      # machine lacks it, which is what makes this genuinely double-click
+      # installable on Windows 10.
+      - name: Build installer
+        run: wails build -nsis -webview2 download -ldflags "-s -w"
+
+      - name: Verify the installer was actually produced
+        shell: bash
+        run: |
+          ls -lh build/bin/
+          test -s build/bin/age-gui-amd64-installer.exe || {
+            echo "::error::NSIS installer missing — makensis probably was not found (wails only warns)"
+            exit 1
+          }
+
+      - name: Stage assets
+        shell: bash
+        env:
+          VERSION: ${{ steps.v.outputs.version }}
+        run: |
+          mkdir -p dist
+          cp build/bin/age-gui-amd64-installer.exe "dist/age-gui-$VERSION-windows-amd64-installer.exe"
+          # Portable exe as well: some people cannot or will not run installers.
+          cp build/bin/age-gui.exe "dist/age-gui-$VERSION-windows-amd64-portable.exe"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: dist/*
+          if-no-files-found: error
+
+  macos:
+    name: macOS app
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Version from tag
+        id: v
+        shell: bash
+        run: |
+          TAG="${{ inputs.tag || github.ref_name }}"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Install Wails
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@${{ env.WAILS_VERSION }}
+
+      # universal = one .app for both Apple Silicon and Intel, so there is no
+      # "which one am I?" question for the user to get wrong.
+      - name: Build universal app
+        run: wails build -platform darwin/universal -ldflags "-s -w"
+
+      - name: Verify the app bundle
+        run: |
+          test -d build/bin/age-gui.app || { echo "::error::no .app bundle"; exit 1; }
+          # Prove it really is universal rather than silently single-arch.
+          lipo -archs build/bin/age-gui.app/Contents/MacOS/age-gui
+
+      - name: Stage assets
+        env:
+          VERSION: ${{ steps.v.outputs.version }}
+        run: |
+          mkdir -p dist
+          # ditto, not zip: it preserves the bundle's symlinks and metadata,
+          # which a plain zip mangles into a .app that will not launch.
+          ditto -c -k --keepParent build/bin/age-gui.app \
+            "dist/age-gui-$VERSION-macos-universal.zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos
+          path: dist/*
+          if-no-files-found: error
+
+  release:
+    name: Publish release
+    needs: [linux, windows, macos]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      - name: Version from tag
+        id: v
+        shell: bash
+        run: |
+          TAG="${{ inputs.tag || github.ref_name }}"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: assets
+          merge-multiple: true
+
+      - name: Checksums
+        working-directory: assets
+        run: |
+          ls -lh
+          sha256sum * > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Write release notes
+        env:
+          VERSION: ${{ steps.v.outputs.version }}
+        run: bash .github/release-notes.sh "$VERSION" > NOTES.md
+
+      # gh is preinstalled on the runner. Used in preference to a third-party
+      # release action: this is a security tool, and every extra action in the
+      # pipeline is another supply-chain dependency that can publish on our
+      # behalf.
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ steps.v.outputs.tag }}" \
+            --title "Age GUI ${{ steps.v.outputs.tag }}" \
+            --notes-file NOTES.md \
+            --verify-tag \
+            assets/*

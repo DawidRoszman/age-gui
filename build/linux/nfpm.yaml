@@ -1,0 +1,64 @@
+# nfpm config for the Linux .deb and .rpm packages.
+#
+# Wails has no Linux packaging of its own, so this turns the bare binary it
+# emits into something a user can double-click, complete with a menu entry and
+# the GTK/WebKit dependencies their package manager will pull in for them.
+#
+# Build with:  nfpm package -f build/linux/nfpm.yaml -p deb -t dist/
+name: age-gui
+arch: amd64
+platform: linux
+# Supplied by the release workflow from the git tag.
+version: ${VERSION}
+section: utils
+priority: optional
+maintainer: Dawid Roszman <dawidroszman@gmail.com>
+description: |
+  Share secrets securely, without the command line.
+
+  A friendly desktop wrapper around age. Create a keypair, share your public
+  key, save your contacts' public keys, and encrypt or decrypt files - no
+  terminal required.
+vendor: Dawid Roszman
+homepage: https://github.com/DawidRoszman/age-gui
+# No license: field on purpose — the repo has no LICENSE file yet, and package
+# metadata must not assert a licence that was never chosen. Add a LICENSE and
+# then set this to its SPDX id (e.g. MIT).
+
+contents:
+  - src: ./build/bin/age-gui
+    dst: /usr/bin/age-gui
+    file_info:
+      mode: 0755
+
+  - src: ./build/linux/age-gui.desktop
+    dst: /usr/share/applications/age-gui.desktop
+
+  - src: ./build/appicon.png
+    dst: /usr/share/icons/hicolor/512x512/apps/age-gui.png
+
+  - src: ./build/linux/age-gui.xml
+    dst: /usr/share/mime/packages/age-gui.xml
+
+overrides:
+  deb:
+    depends:
+      # Ubuntu 24.04 renamed libgtk-3-0 to libgtk-3-0t64 in the 64-bit time_t
+      # transition, while Debian 12 and older Ubuntu still use the old name.
+      # The alternative makes one package install correctly on both; naming
+      # either alone would make it uninstallable on half the target distros.
+      - libgtk-3-0t64 | libgtk-3-0
+      - libwebkit2gtk-4.1-0
+  rpm:
+    depends:
+      # Depend on sonames rather than package names. RPM packages Provide their
+      # sonames, so this resolves on Fedora, RHEL and openSUSE alike, whereas
+      # the package name differs on each (webkit2gtk4.1 vs libwebkit2gtk-4_1-0).
+      - libwebkit2gtk-4.1.so.0()(64bit)
+      - libgtk-3.so.0()(64bit)
+
+# Refresh the desktop caches after install/removal, otherwise the app does not
+# appear in the menu until the user logs out and back in.
+scripts:
+  postinstall: ./build/linux/postinstall.sh
+  postremove: ./build/linux/postremove.sh

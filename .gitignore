@@ -1,6 +1,10 @@
 # Build output
 /build/bin/
 
+# Release packaging output (nfpm/tar staging), produced by .github/workflows/release.yml
+/dist/
+/stage/
+
 # Vite output.
 #
 # frontend/dist/gitkeep MUST stay tracked: main.go has

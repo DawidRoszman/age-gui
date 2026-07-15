@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Registers .age files with the desktop, so they get an icon in the file manager
+  and offer Age GUI under "Open With".
+
+  Matched by glob rather than content: the age format's magic bytes
+  ("age-encryption.org/v1") only appear in binary files, and armored ones start
+  with a PEM-style header that would be mistaken for a certificate. The
+  extension is what users actually see anyway.
+-->
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+  <mime-type type="application/x-age-encrypted">
+    <comment>age encrypted file</comment>
+    <glob pattern="*.age"/>
+    <icon name="age-gui"/>
+  </mime-type>
+</mime-info>

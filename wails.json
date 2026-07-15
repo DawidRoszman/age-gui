@@ -11,7 +11,10 @@
     "email": "dawidroszman@gmail.com"
   },
   "info": {
+    "companyName": "Dawid Roszman",
     "productName": "Age GUI",
+    "productVersion": "0.0.0",
+    "copyright": "Copyright © 2026 Dawid Roszman",
     "comments": "Share secrets securely, without the command line."
   }
 }

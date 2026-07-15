@@ -6,6 +6,32 @@ who don't use a terminal can still share secrets securely.
 Create a keypair, share your public key, save your contacts' public keys, and
 encrypt or decrypt files — no command line required.
 
+## Download
+
+Ready-to-use packages are on the
+[**Releases** page](https://github.com/DawidRoszman/age-gui/releases/latest).
+
+| Your system | File |
+|---|---|
+| Windows | `…-windows-amd64-installer.exe` (brings WebView2 with it) |
+| macOS | `…-macos-universal.zip` (Apple Silicon and Intel) |
+| Ubuntu / Debian 12+ | `…_amd64.deb` — `sudo apt install ./age-gui_*.deb` |
+| Fedora / RHEL / openSUSE | `…x86_64.rpm` — `sudo dnf install ./age-gui-*.rpm` |
+| Other Linux | `…-linux-amd64.tar.gz` (needs GTK 3 + WebKit2GTK 4.1) |
+
+The `.deb` and `.rpm` pull in GTK and WebKit through your package manager and
+add a menu entry.
+
+**The builds are unsigned**, so Windows shows a SmartScreen warning and macOS
+says the developer cannot be verified. Signing certificates cost roughly
+$100–400 a year. Each release explains how to get past the warning, and every
+artefact is built in public by [`release.yml`](.github/workflows/release.yml)
+with SHA256 checksums attached, so you can verify rather than trust.
+
+Releases are cut by pushing a tag:
+
+    git tag v1.0.0 && git push origin v1.0.0
+
 ## Status
 
 Working end to end on Linux: the desktop binary builds, launches, and the core
