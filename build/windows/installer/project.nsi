@@ -57,7 +57,9 @@ ManifestDPIAware true
 !define MUI_ABORTWARNING # This will warn the user if they exit from the installer.
 
 !insertmacro MUI_PAGE_WELCOME # Welcome to the installer page.
-# !insertmacro MUI_PAGE_LICENSE "resources\eula.txt" # Adds a EULA page to the installer
+# Age GUI is GPLv3, which requires the licence to be shown and to travel with
+# the binary. Paths here are relative to build\windows\installer.
+!insertmacro MUI_PAGE_LICENSE "..\..\..\LICENSE"
 !insertmacro MUI_PAGE_DIRECTORY # In which folder install page.
 !insertmacro MUI_PAGE_INSTFILES # Installing page.
 !insertmacro MUI_PAGE_FINISH # Finished installation page.
@@ -87,6 +89,12 @@ Section
     SetOutPath $INSTDIR
 
     !insertmacro wails.files
+
+    # The GPL requires the licence to be distributed with the binary, and the
+    # BSD/MIT/Apache dependencies require their notices to be reproduced in
+    # binary distributions. Both are removed by the uninstaller's RMDir /r.
+    File "/oname=LICENSE.txt" "..\..\..\LICENSE"
+    File "/oname=THIRD_PARTY_LICENSES.md" "..\..\..\THIRD_PARTY_LICENSES.md"
 
     CreateShortcut "$SMPROGRAMS\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"
     CreateShortCut "$DESKTOP\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"

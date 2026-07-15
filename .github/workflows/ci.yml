@@ -46,6 +46,19 @@ jobs:
 
       - run: go vet ./...
 
+      # The BSD/MIT/Apache dependencies require their notices to be reproduced
+      # in binary distributions, and those notices ship inside every package.
+      # Regenerate and diff, so adding a dependency cannot silently leave the
+      # published packages in violation.
+      - name: Third-party licenses are up to date
+        run: |
+          sudo apt-get update && sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev
+          ./scripts/gen-third-party-licenses.sh > /tmp/tpl.md
+          if ! diff -u THIRD_PARTY_LICENSES.md /tmp/tpl.md; then
+            echo "::error::THIRD_PARTY_LICENSES.md is stale. Run ./scripts/gen-third-party-licenses.sh > THIRD_PARTY_LICENSES.md"
+            exit 1
+          fi
+
       - name: gofmt
         run: |
           unformatted=$(gofmt -l . | grep -v node_modules || true)

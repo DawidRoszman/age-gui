@@ -75,11 +75,14 @@ jobs:
           nfpm package -f build/linux/nfpm.yaml -p deb -t dist/
           nfpm package -f build/linux/nfpm.yaml -p rpm -t dist/
 
-          # Plain archive for everyone not on apt or dnf.
+          # Plain archive for everyone not on apt or dnf. LICENSE and the
+          # third-party notices are required to travel with the binary.
           install -Dm755 build/bin/age-gui                 "stage/age-gui-$VERSION/age-gui"
           install -Dm644 build/linux/age-gui.desktop       "stage/age-gui-$VERSION/age-gui.desktop"
           install -Dm644 build/appicon.png                 "stage/age-gui-$VERSION/age-gui.png"
           install -Dm644 README.md                         "stage/age-gui-$VERSION/README.md"
+          install -Dm644 LICENSE                           "stage/age-gui-$VERSION/LICENSE"
+          install -Dm644 THIRD_PARTY_LICENSES.md           "stage/age-gui-$VERSION/THIRD_PARTY_LICENSES.md"
           tar -czf "dist/age-gui-$VERSION-linux-amd64.tar.gz" -C stage "age-gui-$VERSION"
 
       # nfpm and wails both report success in situations that produce nothing
@@ -165,6 +168,10 @@ jobs:
           cp build/bin/age-gui-amd64-installer.exe "dist/age-gui-$VERSION-windows-amd64-installer.exe"
           # Portable exe as well: some people cannot or will not run installers.
           cp build/bin/age-gui.exe "dist/age-gui-$VERSION-windows-amd64-portable.exe"
+          # The portable exe travels with no installer to carry the licences, so
+          # they ship alongside it.
+          cp LICENSE "dist/LICENSE.txt"
+          cp THIRD_PARTY_LICENSES.md "dist/THIRD_PARTY_LICENSES.md"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -213,6 +220,10 @@ jobs:
           VERSION: ${{ steps.v.outputs.version }}
         run: |
           mkdir -p dist
+          # The GPL requires the licence to travel with the binary; inside the
+          # bundle's Resources is where a .app carries such things.
+          cp LICENSE build/bin/age-gui.app/Contents/Resources/LICENSE.txt
+          cp THIRD_PARTY_LICENSES.md build/bin/age-gui.app/Contents/Resources/
           # ditto, not zip: it preserves the bundle's symlinks and metadata,
           # which a plain zip mangles into a .app that will not launch.
           ditto -c -k --keepParent build/bin/age-gui.app \

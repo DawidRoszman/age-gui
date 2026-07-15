@@ -21,9 +21,7 @@ description: |
   terminal required.
 vendor: Dawid Roszman
 homepage: https://github.com/DawidRoszman/age-gui
-# No license: field on purpose — the repo has no LICENSE file yet, and package
-# metadata must not assert a licence that was never chosen. Add a LICENSE and
-# then set this to its SPDX id (e.g. MIT).
+license: GPL-3.0-or-later
 
 contents:
   - src: ./build/bin/age-gui
@@ -39,6 +37,15 @@ contents:
 
   - src: ./build/linux/age-gui.xml
     dst: /usr/share/mime/packages/age-gui.xml
+
+  # The GPL requires the licence to travel with the binary, and the BSD/MIT/
+  # Apache dependencies require their copyright notices to be reproduced in
+  # binary distributions. Shipping without these is a licence violation, not an
+  # oversight to tidy up later.
+  - src: ./LICENSE
+    dst: /usr/share/doc/age-gui/LICENSE
+  - src: ./THIRD_PARTY_LICENSES.md
+    dst: /usr/share/doc/age-gui/THIRD_PARTY_LICENSES.md
 
 overrides:
   deb:
