@@ -16,6 +16,12 @@ type SettingsService struct {
 	store SettingsStore
 	keys  *KeyService
 
+	// defaultSaveDir is where output goes when the user has not chosen a
+	// folder. Passed in rather than looked up, so this package keeps knowing
+	// nothing about where an OS puts downloads, and tests can point it at a
+	// temporary directory instead of the real home folder.
+	defaultSaveDir string
+
 	mu      sync.RWMutex
 	current model.Settings
 }
@@ -25,8 +31,11 @@ type SettingsService struct {
 // Applying at construction matters: without it the app would run with auto-lock
 // off until the user happened to open the settings screen, silently ignoring a
 // preference they set weeks ago.
-func NewSettingsService(store SettingsStore, keys *KeyService) (*SettingsService, error) {
-	s := &SettingsService{store: store, keys: keys}
+//
+// defaultSaveDir is the folder to use when the user has expressed no
+// preference; it need not exist yet.
+func NewSettingsService(store SettingsStore, keys *KeyService, defaultSaveDir string) (*SettingsService, error) {
+	s := &SettingsService{store: store, keys: keys, defaultSaveDir: defaultSaveDir}
 
 	loaded, err := store.Load()
 	if err != nil {
@@ -35,6 +44,29 @@ func NewSettingsService(store SettingsStore, keys *KeyService) (*SettingsService
 	s.current = loaded
 	s.apply(loaded)
 	return s, nil
+}
+
+// DefaultSaveDir returns the folder used when no preference is set.
+func (s *SettingsService) DefaultSaveDir() string { return s.defaultSaveDir }
+
+// EncryptDir returns the folder encrypted output is written to.
+func (s *SettingsService) EncryptDir() string {
+	return s.resolveDir(s.Get().EncryptDir)
+}
+
+// DecryptDir returns the folder decrypted output is written to.
+func (s *SettingsService) DecryptDir() string {
+	return s.resolveDir(s.Get().DecryptDir)
+}
+
+// resolveDir turns a stored preference into a real folder, empty meaning the
+// default. This is the only place that mapping lives, so a caller cannot forget
+// it and write to "".
+func (s *SettingsService) resolveDir(dir string) string {
+	if dir == "" {
+		return s.defaultSaveDir
+	}
+	return dir
 }
 
 // Get returns the current settings.

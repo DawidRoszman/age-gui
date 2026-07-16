@@ -20,6 +20,20 @@ type SettingsDTO struct {
 	// numbers that would drift from the Go side.
 	MinMinutes int `json:"minMinutes"`
 	MaxMinutes int `json:"maxMinutes"`
+
+	// EncryptDir and DecryptDir are resolved absolute paths, never the empty
+	// "use the default" sentinel: the UI's job is to show the user where files
+	// actually go, and "" would tell them nothing.
+	EncryptDir string `json:"encryptDir"`
+	DecryptDir string `json:"decryptDir"`
+	// UsingDefault flags say whether the path above is merely the default
+	// rather than a choice, so the UI can label it and offer to reset only
+	// when that would do something.
+	EncryptDirIsDefault bool `json:"encryptDirIsDefault"`
+	DecryptDirIsDefault bool `json:"decryptDirIsDefault"`
+	// DefaultDir is the downloads folder, so the UI can name what "reset"
+	// means without guessing.
+	DefaultDir string `json:"defaultDir"`
 }
 
 // SettingsResult wraps settings.
@@ -28,38 +42,84 @@ type SettingsResult struct {
 	Error    *Error      `json:"error,omitempty"`
 }
 
-func settingsDTO(s model.Settings) SettingsDTO {
-	return SettingsDTO{
-		AutoLockMinutes: s.AutoLockMinutes,
-		AutoLockEnabled: s.AutoLockEnabled(),
-		MinMinutes:      model.MinAutoLockMinutes,
-		MaxMinutes:      model.MaxAutoLockMinutes,
-	}
-}
-
 // Settings is the Wails-bound handler for preferences.
 type Settings struct {
 	settings *service.SettingsService
+	platform Platform
 }
 
 // NewSettings builds the handler.
-func NewSettings(settings *service.SettingsService) *Settings {
-	return &Settings{settings: settings}
+func NewSettings(settings *service.SettingsService, platform Platform) *Settings {
+	return &Settings{settings: settings, platform: platform}
+}
+
+// dto renders settings for the UI.
+//
+// A method rather than a function because the resolved directories come from
+// the service: the stored value may be empty, and only the service knows what
+// that resolves to.
+func (h *Settings) dto(s model.Settings) SettingsDTO {
+	return SettingsDTO{
+		AutoLockMinutes:     s.AutoLockMinutes,
+		AutoLockEnabled:     s.AutoLockEnabled(),
+		MinMinutes:          model.MinAutoLockMinutes,
+		MaxMinutes:          model.MaxAutoLockMinutes,
+		EncryptDir:          h.settings.EncryptDir(),
+		DecryptDir:          h.settings.DecryptDir(),
+		EncryptDirIsDefault: s.EncryptDir == "",
+		DecryptDirIsDefault: s.DecryptDir == "",
+		DefaultDir:          h.settings.DefaultSaveDir(),
+	}
 }
 
 // Get returns the current settings.
 func (h *Settings) Get() SettingsResult {
-	return SettingsResult{Settings: settingsDTO(h.settings.Get())}
+	return SettingsResult{Settings: h.dto(h.settings.Get())}
 }
 
 // SetAutoLock configures idle auto-lock. Pass 0 to turn it off.
 func (h *Settings) SetAutoLock(minutes int) SettingsResult {
 	next := h.settings.Get()
 	next.AutoLockMinutes = minutes
+	return h.update(next)
+}
 
+// SetEncryptDir sets where encrypted files are written. Pass "" to go back to
+// the downloads folder.
+func (h *Settings) SetEncryptDir(dir string) SettingsResult {
+	next := h.settings.Get()
+	next.EncryptDir = dir
+	return h.update(next)
+}
+
+// SetDecryptDir sets where decrypted files are written. Pass "" to go back to
+// the downloads folder.
+func (h *Settings) SetDecryptDir(dir string) SettingsResult {
+	next := h.settings.Get()
+	next.DecryptDir = dir
+	return h.update(next)
+}
+
+// ChooseDir opens a folder picker starting at the current setting, and returns
+// the chosen path. "" means the user cancelled, which is not an error.
+//
+// Picking and saving are separate calls so a cancelled dialog cannot be
+// mistaken for "reset to default" -- both would arrive here as "".
+func (h *Settings) ChooseDir(title, startDir string) StringResult {
+	dir, err := h.platform.OpenDirectoryDialog(title, startDir)
+	if err != nil {
+		return StringResult{Error: mapError(err)}
+	}
+	return StringResult{Value: dir}
+}
+
+// update persists and renders, keeping the rejected-value path identical for
+// every setter: on failure the UI is handed what is still in force, not the
+// value that was refused.
+func (h *Settings) update(next model.Settings) SettingsResult {
 	updated, err := h.settings.Update(next)
 	if err != nil {
-		return SettingsResult{Settings: settingsDTO(updated), Error: mapError(err)}
+		return SettingsResult{Settings: h.dto(updated), Error: mapError(err)}
 	}
-	return SettingsResult{Settings: settingsDTO(updated)}
+	return SettingsResult{Settings: h.dto(updated)}
 }

@@ -38,6 +38,10 @@ export function PickFiles(arg1) {
   return window['go']['view']['Crypto']['PickFiles'](arg1);
 }
 
+export function ShowInFolder(arg1) {
+  return window['go']['view']['Crypto']['ShowInFolder'](arg1);
+}
+
 export function SuggestDecryptOutput(arg1) {
   return window['go']['view']['Crypto']['SuggestDecryptOutput'](arg1);
 }

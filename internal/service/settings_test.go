@@ -38,7 +38,7 @@ func newSettingsFixture(t *testing.T) (*SettingsService, *KeyService, *fakeSetti
 	clock := newFakeClock()
 	keys := NewKeyService(&fakeIdentityStore{}, withWorkFactor(testWorkFactor), withClock(clock.Now))
 	store := &fakeSettingsStore{}
-	svc, err := NewSettingsService(store, keys)
+	svc, err := NewSettingsService(store, keys, t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -64,7 +64,7 @@ func TestSettings_StoredValueAppliedAtStartup(t *testing.T) {
 	keys := NewKeyService(&fakeIdentityStore{}, withWorkFactor(testWorkFactor), withClock(clock.Now))
 	store := &fakeSettingsStore{settings: model.Settings{AutoLockMinutes: 3}, saved: true}
 
-	if _, err := NewSettingsService(store, keys); err != nil {
+	if _, err := NewSettingsService(store, keys, t.TempDir()); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := keys.Generate([]byte("pass")); err != nil {
@@ -86,7 +86,7 @@ func TestSettings_StoredDisabledAppliedAtStartup(t *testing.T) {
 		saved:    true,
 	}
 
-	if _, err := NewSettingsService(store, keys); err != nil {
+	if _, err := NewSettingsService(store, keys, t.TempDir()); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := keys.Generate([]byte("pass")); err != nil {

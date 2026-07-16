@@ -138,6 +138,21 @@ export const settings = {
     const r = await SettingsGo.SetAutoLock(minutes)
     return unwrap(r, r.settings)
   },
+  /** Pass "" to go back to the downloads folder. */
+  async setEncryptDir(dir: string): Promise<AppSettings> {
+    const r = await SettingsGo.SetEncryptDir(dir)
+    return unwrap(r, r.settings)
+  },
+  /** Pass "" to go back to the downloads folder. */
+  async setDecryptDir(dir: string): Promise<AppSettings> {
+    const r = await SettingsGo.SetDecryptDir(dir)
+    return unwrap(r, r.settings)
+  },
+  /** Returns "" when the folder picker was cancelled. */
+  async chooseDir(title: string, startDir: string): Promise<string> {
+    const r = await SettingsGo.ChooseDir(title, startDir)
+    return unwrap(r, r.value)
+  },
 }
 
 export const contacts = {
@@ -195,7 +210,14 @@ export const crypto = {
     const r = await CryptoGo.BaseName(path)
     return unwrap(r, r.value)
   },
-  /** `out` empty means the default name beside the input, which never overwrites. */
+  /** Opens the OS file manager showing `path`. */
+  async showInFolder(path: string): Promise<void> {
+    unwrap(await CryptoGo.ShowInFolder(path), undefined)
+  },
+  /**
+   * `out` empty means the save folder from Settings, with a numbered name if
+   * something is already there. Nothing is ever overwritten.
+   */
   async encrypt(jobId: string, input: string, out: string, contactIds: string[]): Promise<string> {
     const r = await CryptoGo.Encrypt(jobId, input, out, contactIds)
     return unwrap(r, r.value)

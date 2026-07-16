@@ -228,6 +228,11 @@ export namespace view {
 	    autoLockEnabled: boolean;
 	    minMinutes: number;
 	    maxMinutes: number;
+	    encryptDir: string;
+	    decryptDir: string;
+	    encryptDirIsDefault: boolean;
+	    decryptDirIsDefault: boolean;
+	    defaultDir: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new SettingsDTO(source);
@@ -239,6 +244,11 @@ export namespace view {
 	        this.autoLockEnabled = source["autoLockEnabled"];
 	        this.minMinutes = source["minMinutes"];
 	        this.maxMinutes = source["maxMinutes"];
+	        this.encryptDir = source["encryptDir"];
+	        this.decryptDir = source["decryptDir"];
+	        this.encryptDirIsDefault = source["encryptDirIsDefault"];
+	        this.decryptDirIsDefault = source["decryptDirIsDefault"];
+	        this.defaultDir = source["defaultDir"];
 	    }
 	}
 	export class SettingsResult {

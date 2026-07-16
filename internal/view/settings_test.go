@@ -32,11 +32,11 @@ func (m *memSettingsStore) Save(s model.Settings) error {
 func newSettingsHandler(t *testing.T) (*Settings, *service.KeyService) {
 	t.Helper()
 	keys := service.NewKeyService(&memIdentityStore{})
-	svc, err := service.NewSettingsService(&memSettingsStore{}, keys)
+	svc, err := service.NewSettingsService(&memSettingsStore{}, keys, t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
-	return NewSettings(svc), keys
+	return NewSettings(svc, &fakePlatform{}), keys
 }
 
 func TestSettingsHandler_GetDefaults(t *testing.T) {

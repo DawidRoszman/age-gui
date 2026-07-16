@@ -22,6 +22,7 @@ const EventProgress = "crypto:progress"
 type Crypto struct {
 	crypto   *service.CryptoService
 	contacts *service.ContactService
+	settings *service.SettingsService
 	platform Platform
 
 	// mu guards jobs. Wails dispatches each JS call on its own goroutine, so a
@@ -31,10 +32,11 @@ type Crypto struct {
 }
 
 // NewCrypto builds the handler.
-func NewCrypto(crypto *service.CryptoService, contacts *service.ContactService, platform Platform) *Crypto {
+func NewCrypto(crypto *service.CryptoService, contacts *service.ContactService, settings *service.SettingsService, platform Platform) *Crypto {
 	return &Crypto{
 		crypto:   crypto,
 		contacts: contacts,
+		settings: settings,
 		platform: platform,
 		jobs:     make(map[string]context.CancelFunc),
 	}
@@ -68,12 +70,31 @@ func (h *Crypto) ChooseSavePath(title, defaultName string) StringResult {
 
 // SuggestEncryptOutput returns the default output path for encrypting in.
 func (h *Crypto) SuggestEncryptOutput(in string) StringResult {
-	return StringResult{Value: service.EncryptedName(in)}
+	return h.suggest(h.settings.EncryptDir(), in, service.EncryptedName)
 }
 
 // SuggestDecryptOutput returns the default output path for decrypting in.
 func (h *Crypto) SuggestDecryptOutput(in string) StringResult {
-	return StringResult{Value: service.DecryptedName(in)}
+	return h.suggest(h.settings.DecryptDir(), in, service.DecryptedName)
+}
+
+// suggest offers the path an operation would use, for the save dialog to open
+// on. It is only a proposal: the dialog may return somewhere else entirely.
+func (h *Crypto) suggest(dir, in string, name func(string) string) StringResult {
+	path, err := service.OutputPath(dir, in, name)
+	if err != nil {
+		return StringResult{Error: mapError(err)}
+	}
+	return StringResult{Value: path}
+}
+
+// ShowInFolder opens the OS file manager on path, so the user can get to a file
+// they just made without hunting for it.
+func (h *Crypto) ShowInFolder(path string) VoidResult {
+	if err := h.platform.Reveal(path); err != nil {
+		return VoidResult{Error: mapError(err)}
+	}
+	return VoidResult{}
 }
 
 // Inspect reports whether a file needs a passphrase or a key, so the UI can
@@ -97,7 +118,10 @@ func (h *Crypto) Encrypt(jobID, in, out string, contactIDs []string) StringResul
 		return StringResult{Error: mapError(err)}
 	}
 
-	out, mode := h.resolveOutput(in, out, service.EncryptedName)
+	out, mode, err := h.resolveOutput(in, out, h.settings.EncryptDir(), service.EncryptedName)
+	if err != nil {
+		return StringResult{Error: mapError(err)}
+	}
 	ctx, done := h.begin(jobID)
 	defer done()
 
@@ -109,7 +133,10 @@ func (h *Crypto) Encrypt(jobID, in, out string, contactIDs []string) StringResul
 
 // EncryptWithPassphrase encrypts in under a passphrase.
 func (h *Crypto) EncryptWithPassphrase(jobID, in, out, passphrase string) StringResult {
-	out, mode := h.resolveOutput(in, out, service.EncryptedName)
+	out, mode, err := h.resolveOutput(in, out, h.settings.EncryptDir(), service.EncryptedName)
+	if err != nil {
+		return StringResult{Error: mapError(err)}
+	}
 	ctx, done := h.begin(jobID)
 	defer done()
 
@@ -121,7 +148,10 @@ func (h *Crypto) EncryptWithPassphrase(jobID, in, out, passphrase string) String
 
 // Decrypt decrypts in with the unlocked key.
 func (h *Crypto) Decrypt(jobID, in, out string) StringResult {
-	out, mode := h.resolveOutput(in, out, service.DecryptedName)
+	out, mode, err := h.resolveOutput(in, out, h.settings.DecryptDir(), service.DecryptedName)
+	if err != nil {
+		return StringResult{Error: mapError(err)}
+	}
 	ctx, done := h.begin(jobID)
 	defer done()
 
@@ -134,7 +164,10 @@ func (h *Crypto) Decrypt(jobID, in, out string) StringResult {
 // DecryptWithPassphrase decrypts a passphrase-protected file. Works while the
 // app is locked, since no identity is involved.
 func (h *Crypto) DecryptWithPassphrase(jobID, in, out, passphrase string) StringResult {
-	out, mode := h.resolveOutput(in, out, service.DecryptedName)
+	out, mode, err := h.resolveOutput(in, out, h.settings.DecryptDir(), service.DecryptedName)
+	if err != nil {
+		return StringResult{Error: mapError(err)}
+	}
 	ctx, done := h.begin(jobID)
 	defer done()
 
@@ -163,13 +196,23 @@ func (h *Crypto) BaseName(path string) StringResult {
 }
 
 // resolveOutput picks the output path and the overwrite policy.
-func (h *Crypto) resolveOutput(in, out string, suggest func(string) string) (string, service.Overwrite) {
-	if out == "" {
-		// Automatic path: the user has not seen it, so never overwrite.
-		return suggest(in), service.Refuse
+//
+// dir is where automatic output goes -- the user's configured folder, or their
+// downloads folder. It is ignored when out is set, because an explicit choice
+// from the save dialog outranks any preference.
+func (h *Crypto) resolveOutput(in, out, dir string, name func(string) string) (string, service.Overwrite, error) {
+	if out != "" {
+		// Came from the save dialog, which already asked about replacing.
+		return out, service.Replace, nil
 	}
-	// Came from the save dialog, which already asked.
-	return out, service.Replace
+	// Automatic path: the user has not seen it, so never overwrite. OutputPath
+	// numbers around anything already there, leaving Refuse to catch only the
+	// race where someone else creates the file in between.
+	path, err := service.OutputPath(dir, in, name)
+	if err != nil {
+		return "", service.Refuse, err
+	}
+	return path, service.Refuse, nil
 }
 
 // begin registers a cancellable job and returns a cleanup func.

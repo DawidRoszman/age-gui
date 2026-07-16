@@ -123,6 +123,17 @@
   async function cancel() {
     if (jobId) await crypto.cancel(jobId)
   }
+
+  // Failing to open a file manager does not undo a successful encryption, so
+  // report it without disturbing the success message above it.
+  async function showDone() {
+    try {
+      await crypto.showInFolder(done)
+    } catch (e) {
+      error = message(e)
+      announce(error)
+    }
+  }
 </script>
 
 <header>
@@ -219,7 +230,10 @@
     <p class="alert error" role="alert">{error}</p>
   {/if}
   {#if done}
-    <p class="alert ok">Encrypted and saved to <code>{done}</code></p>
+    <div class="alert ok done">
+      <p>Encrypted and saved to <code>{done}</code></p>
+      <button class="ghost" onclick={showDone}>Show in folder</button>
+    </div>
   {/if}
 
   <div class="row">
@@ -228,6 +242,17 @@
 </div>
 
 <style>
+  /* The path and the button share a row, wrapping on a narrow window rather
+     than pushing the button off the edge. */
+  .done {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+  .done p { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+
   header { margin-bottom: 1rem; }
   h2 { margin: 0 0 0.2rem; }
   .lede { margin: 0; color: var(--text-dim); }

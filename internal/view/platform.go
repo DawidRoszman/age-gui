@@ -2,6 +2,9 @@ package view
 
 import (
 	"context"
+	"os/exec"
+	"path/filepath"
+	goruntime "runtime"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -20,6 +23,12 @@ type Platform interface {
 	OpenFilesDialog(title string) ([]string, error)
 	// SaveFileDialog asks where to write a file. Returns "" when cancelled.
 	SaveFileDialog(title, defaultName string) (string, error)
+	// OpenDirectoryDialog asks the user to pick a folder, starting at
+	// startDir. Returns "" when cancelled.
+	OpenDirectoryDialog(title, startDir string) (string, error)
+	// Reveal opens the OS file manager showing path, selecting it where the
+	// platform supports that.
+	Reveal(path string) error
 	// SetClipboard copies text to the system clipboard.
 	SetClipboard(text string) error
 	// EmitEvent sends an event to the frontend.
@@ -58,6 +67,42 @@ func (p *WailsPlatform) SaveFileDialog(title, defaultName string) (string, error
 		Title:           title,
 		DefaultFilename: defaultName,
 	})
+}
+
+// OpenDirectoryDialog implements Platform.
+func (p *WailsPlatform) OpenDirectoryDialog(title, startDir string) (string, error) {
+	return runtime.OpenDirectoryDialog(p.ctx, runtime.OpenDialogOptions{
+		Title:            title,
+		DefaultDirectory: startDir,
+	})
+}
+
+// Reveal implements Platform.
+//
+// Every branch runs a fixed command with the path as a separate argument, never
+// through a shell: output paths derive from user file names, and a name
+// containing a quote or a semicolon must stay a file name. Paths reaching here
+// are absolute, so none can be mistaken for an option.
+func (p *WailsPlatform) Reveal(path string) error {
+	switch goruntime.GOOS {
+	case "darwin":
+		// -R reveals the file itself, selected, rather than just opening the
+		// folder and leaving the user to find it.
+		return exec.Command("open", "-R", path).Run()
+
+	case "windows":
+		// explorer exits 1 even when it succeeds, so its status says nothing
+		// and treating it as failure would report a phantom error over a
+		// window that did open.
+		_ = exec.Command("explorer", "/select,"+path).Run()
+		return nil
+
+	default:
+		// No portable way to select a file on Linux -- the file managers that
+		// support it disagree on how -- so open the containing folder, which
+		// every one of them handles.
+		return exec.Command("xdg-open", filepath.Dir(path)).Run()
+	}
 }
 
 // SetClipboard implements Platform.

@@ -24,8 +24,14 @@ type fakePlatform struct {
 	openPath  string
 	openPaths []string
 	savePath  string
+	chosenDir string
 	failWith  error
 	events    []recordedEvent
+
+	// revealed records what Reveal was asked to show, so a test can assert the
+	// user would have been sent to the right file rather than merely that no
+	// error came back.
+	revealed []string
 }
 
 type recordedEvent struct {
@@ -43,6 +49,20 @@ func (p *fakePlatform) OpenFilesDialog(string) ([]string, error) {
 
 func (p *fakePlatform) SaveFileDialog(string, string) (string, error) {
 	return p.savePath, p.failWith
+}
+
+func (p *fakePlatform) OpenDirectoryDialog(string, string) (string, error) {
+	return p.chosenDir, p.failWith
+}
+
+func (p *fakePlatform) Reveal(path string) error {
+	if p.failWith != nil {
+		return p.failWith
+	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.revealed = append(p.revealed, path)
+	return nil
 }
 
 func (p *fakePlatform) SetClipboard(text string) error {
@@ -106,7 +126,12 @@ type fixture struct {
 	keys     *Keys
 	contacts *Contacts
 	crypto   *Crypto
+	settings *Settings
 	platform *fakePlatform
+
+	// saveDir is where automatic output lands. A temporary directory, so a
+	// test can never write into the real downloads folder of whoever runs it.
+	saveDir string
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -116,13 +141,24 @@ func newFixture(t *testing.T) *fixture {
 	contactSvc := service.NewContactService(&memContactStore{})
 	cryptoSvc := service.NewCryptoService(keySvc)
 
+	saveDir := t.TempDir()
+	settingsSvc, err := service.NewSettingsService(&memSettingsStore{}, keySvc, saveDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	return &fixture{
 		keys:     NewKeys(keySvc, platform),
 		contacts: NewContacts(contactSvc, platform),
-		crypto:   NewCrypto(cryptoSvc, contactSvc, platform),
+		crypto:   NewCrypto(cryptoSvc, contactSvc, settingsSvc, platform),
+		settings: NewSettings(settingsSvc, platform),
 		platform: platform,
+		saveDir:  saveDir,
 	}
 }
+
+// saved returns the path automatic output takes for name.
+func (f *fixture) saved(name string) string { return filepath.Join(f.saveDir, name) }
 
 func pubKey(t *testing.T) string {
 	t.Helper()
@@ -392,8 +428,9 @@ func TestCrypto_EncryptDecryptRoundTrip(t *testing.T) {
 	if enc.Error != nil {
 		t.Fatalf("Encrypt: %+v", enc.Error)
 	}
-	if enc.Value != in+".age" {
-		t.Errorf("output = %q, want the default .age name", enc.Value)
+	// Output goes to the save folder, not beside the input.
+	if enc.Value != f.saved("secret.txt.age") {
+		t.Errorf("output = %q, want %q", enc.Value, f.saved("secret.txt.age"))
 	}
 
 	// Inspect must route this to the key flow, not the passphrase flow.
@@ -445,9 +482,9 @@ func TestCrypto_DecryptWhileLockedReportsLocked(t *testing.T) {
 	}
 }
 
-// The default output path is one the user never saw, so a collision must stop
-// and ask rather than destroy a file.
-func TestCrypto_DefaultOutputRefusesToOverwrite(t *testing.T) {
+// Every output lands in one folder now, so two inputs sharing a name is
+// ordinary. The second must be numbered around the first, never over it.
+func TestCrypto_DefaultOutputNumbersAroundExistingFile(t *testing.T) {
 	f := newFixture(t)
 	gen := f.keys.Generate("pass")
 	add := f.contacts.Add("Me", gen.Status.PublicKey, "")
@@ -457,16 +494,94 @@ func TestCrypto_DefaultOutputRefusesToOverwrite(t *testing.T) {
 	if err := os.WriteFile(in, []byte("x"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(in+".age", []byte("precious"), 0o600); err != nil {
+	// Something is already sitting on the name the output wants.
+	if err := os.WriteFile(f.saved("a.txt.age"), []byte("precious"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 
 	res := f.crypto.Encrypt("j1", in, "", []string{add.Contact.ID})
-	if res.Error == nil || res.Error.Code != CodeTargetExists {
-		t.Fatalf("Encrypt = %+v, want %s", res.Error, CodeTargetExists)
+	if res.Error != nil {
+		t.Fatalf("Encrypt = %+v, want it to number around the collision", res.Error)
 	}
-	if b, _ := os.ReadFile(in + ".age"); string(b) != "precious" {
+	if want := f.saved("a.txt (2).age"); res.Value != want {
+		t.Errorf("output = %q, want %q", res.Value, want)
+	}
+	if b, _ := os.ReadFile(f.saved("a.txt.age")); string(b) != "precious" {
 		t.Error("the existing file was destroyed")
+	}
+
+	// And again: the third file must not land on the second either.
+	res = f.crypto.Encrypt("j2", in, "", []string{add.Contact.ID})
+	if res.Error != nil {
+		t.Fatalf("Encrypt: %+v", res.Error)
+	}
+	if want := f.saved("a.txt (3).age"); res.Value != want {
+		t.Errorf("output = %q, want %q", res.Value, want)
+	}
+}
+
+// An explicit path from the save dialog is the user's decision, and the dialog
+// has already asked about replacing, so it must be honoured exactly -- not
+// numbered into a file they did not name.
+func TestCrypto_ChosenOutputPathIsUsedVerbatim(t *testing.T) {
+	f := newFixture(t)
+	gen := f.keys.Generate("pass")
+	add := f.contacts.Add("Me", gen.Status.PublicKey, "")
+
+	dir := t.TempDir()
+	in := filepath.Join(dir, "a.txt")
+	if err := os.WriteFile(in, []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	chosen := filepath.Join(dir, "chosen.age")
+	if err := os.WriteFile(chosen, []byte("replace me"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	res := f.crypto.Encrypt("j1", in, chosen, []string{add.Contact.ID})
+	if res.Error != nil {
+		t.Fatalf("Encrypt: %+v", res.Error)
+	}
+	if res.Value != chosen {
+		t.Errorf("output = %q, want the chosen path %q", res.Value, chosen)
+	}
+	if b, _ := os.ReadFile(chosen); string(b) == "replace me" {
+		t.Error("the chosen path was not written")
+	}
+}
+
+// Decrypting must not drop plaintext next to the ciphertext when the user has
+// pointed decrypted output somewhere else.
+func TestCrypto_DecryptUsesItsOwnSaveFolder(t *testing.T) {
+	f := newFixture(t)
+	decryptDir := t.TempDir()
+	if res := f.settings.SetDecryptDir(decryptDir); res.Error != nil {
+		t.Fatal(res.Error)
+	}
+
+	dir := t.TempDir()
+	in := filepath.Join(dir, "a.txt")
+	if err := os.WriteFile(in, []byte("plaintext"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	enc := f.crypto.EncryptWithPassphrase("j1", in, "", "hunter2")
+	if enc.Error != nil {
+		t.Fatal(enc.Error)
+	}
+	// Encrypted output still goes to the encrypt folder, untouched by the above.
+	if enc.Value != f.saved("a.txt.age") {
+		t.Errorf("encrypted to %q, want %q", enc.Value, f.saved("a.txt.age"))
+	}
+
+	dec := f.crypto.DecryptWithPassphrase("j2", enc.Value, "", "hunter2")
+	if dec.Error != nil {
+		t.Fatalf("DecryptWithPassphrase: %+v", dec.Error)
+	}
+	if want := filepath.Join(decryptDir, "a.txt"); dec.Value != want {
+		t.Errorf("decrypted to %q, want %q", dec.Value, want)
+	}
+	if b, _ := os.ReadFile(dec.Value); string(b) != "plaintext" {
+		t.Errorf("round-trip = %q", b)
 	}
 }
 
@@ -531,11 +646,25 @@ func TestCrypto_CancelUnknownJobIsHarmless(t *testing.T) {
 func TestCrypto_SuggestedNames(t *testing.T) {
 	f := newFixture(t)
 
-	if got := f.crypto.SuggestEncryptOutput("/tmp/report.pdf").Value; got != "/tmp/report.pdf.age" {
-		t.Errorf("SuggestEncryptOutput = %q", got)
+	// The suggestion is where the operation would actually write: the save
+	// folder, keeping only the input's name. A dialog opening beside the input
+	// would contradict where the file lands if the user just says OK.
+	if got, want := f.crypto.SuggestEncryptOutput("/elsewhere/report.pdf").Value, f.saved("report.pdf.age"); got != want {
+		t.Errorf("SuggestEncryptOutput = %q, want %q", got, want)
 	}
-	if got := f.crypto.SuggestDecryptOutput("/tmp/report.pdf.age").Value; got != "/tmp/report.pdf" {
-		t.Errorf("SuggestDecryptOutput = %q", got)
+	if got, want := f.crypto.SuggestDecryptOutput("/elsewhere/report.pdf.age").Value, f.saved("report.pdf"); got != want {
+		t.Errorf("SuggestDecryptOutput = %q, want %q", got, want)
+	}
+}
+
+func TestCrypto_ShowInFolderRevealsTheFile(t *testing.T) {
+	f := newFixture(t)
+
+	if res := f.crypto.ShowInFolder(f.saved("a.txt.age")); res.Error != nil {
+		t.Fatalf("ShowInFolder: %+v", res.Error)
+	}
+	if len(f.platform.revealed) != 1 || f.platform.revealed[0] != f.saved("a.txt.age") {
+		t.Errorf("revealed = %v, want the file itself", f.platform.revealed)
 	}
 }
 

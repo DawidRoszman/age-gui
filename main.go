@@ -58,9 +58,21 @@ func run() error {
 	contactSvc := service.NewContactService(contactStore)
 	cryptoSvc := service.NewCryptoService(keySvc)
 
+	// Where output goes when the user has not chosen a folder. Resolved once
+	// here rather than per operation: it cannot change while the app runs, and
+	// the service layer has no business knowing how an OS names this folder.
+	//
+	// A failure here means we could not even locate a home directory. Falling
+	// back to the working directory would scatter files somewhere the user
+	// would not think to look, so refuse to start and say why.
+	downloads, err := storage.DownloadsDir()
+	if err != nil {
+		return fmt.Errorf("locate downloads folder: %w", err)
+	}
+
 	// Constructing this applies the stored auto-lock preference, so a setting
 	// chosen weeks ago is in force before the window opens.
-	settingsSvc, err := service.NewSettingsService(settingsStore, keySvc)
+	settingsSvc, err := service.NewSettingsService(settingsStore, keySvc, downloads)
 	if err != nil {
 		return fmt.Errorf("load settings: %w", err)
 	}
@@ -71,8 +83,8 @@ func run() error {
 
 	keysHandler := view.NewKeys(keySvc, platform)
 	contactsHandler := view.NewContacts(contactSvc, platform)
-	cryptoHandler := view.NewCrypto(cryptoSvc, contactSvc, platform)
-	settingsHandler := view.NewSettings(settingsSvc)
+	cryptoHandler := view.NewCrypto(cryptoSvc, contactSvc, settingsSvc, platform)
+	settingsHandler := view.NewSettings(settingsSvc, platform)
 
 	// Tell the UI when an idle lock happens, so it can move the user to the
 	// unlock screen rather than leave them on controls that quietly stopped

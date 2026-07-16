@@ -20,6 +20,8 @@ export function Inspect(arg1:string):Promise<view.FileKindResult>;
 
 export function PickFiles(arg1:string):Promise<view.PathsResult>;
 
+export function ShowInFolder(arg1:string):Promise<view.VoidResult>;
+
 export function SuggestDecryptOutput(arg1:string):Promise<view.StringResult>;
 
 export function SuggestEncryptOutput(arg1:string):Promise<view.StringResult>;

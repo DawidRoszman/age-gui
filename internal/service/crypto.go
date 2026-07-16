@@ -28,6 +28,13 @@ const Extension = ".age"
 // ciphertext gets the same treatment because it costs nothing.
 const outputPerm fs.FileMode = 0o600
 
+// outputDirPerm applies to an output folder we have to create ourselves. Owner
+// only, for the same reason as outputPerm: we are creating a folder that is
+// about to hold a secret. An existing folder keeps its own permissions --
+// MkdirAll does not touch those, so choosing a shared folder stays the user's
+// decision to make.
+const outputDirPerm fs.FileMode = 0o700
+
 // progressInterval throttles progress callbacks. Each one crosses into the
 // webview, and repainting a progress bar per 32KiB chunk would cost more than
 // the encryption.
@@ -108,6 +115,74 @@ func DecryptedName(in string) string {
 		return strings.TrimSuffix(in, Extension)
 	}
 	return in + ".decrypted"
+}
+
+// maxNameAttempts caps the search for a free name.
+//
+// A thousand files of the same name is not a real workflow; reaching this means
+// something is wrong (a directory we cannot stat, say), and looping forever
+// would hang the operation with no way for the user to tell why.
+const maxNameAttempts = 1000
+
+// OutputPath returns where to write the result of an operation on in, inside
+// dir, choosing a name that is not already taken.
+//
+// name maps an input file name to its output file name -- EncryptedName or
+// DecryptedName. Only the base name of in is used: output goes to dir, not
+// beside the input.
+//
+// Collisions are resolved by numbering, "report.pdf (2).age", the way a browser
+// does. Now that every output lands in one shared folder, two inputs with the
+// same name from different folders are ordinary rather than exceptional, and
+// stopping to ask about each one would be noise. Numbering keeps the promise
+// that matters -- nothing already on disk is replaced.
+//
+// The returned path is free at the moment it is returned and nothing reserves
+// it, so a caller racing another writer can still find it taken. Callers pass
+// Refuse, which turns that race into an error rather than a lost file.
+func OutputPath(dir, in string, name func(string) string) (string, error) {
+	if dir == "" {
+		return "", fmt.Errorf("no folder given for output of %q", filepath.Base(in))
+	}
+	// The user picked this folder, or it is their downloads folder; either may
+	// have been removed or never created. 0700 matches the rest of what we
+	// write: output is ciphertext or plaintext of a secret, and neither wants
+	// a group-readable parent we created ourselves.
+	if err := os.MkdirAll(dir, outputDirPerm); err != nil {
+		return "", fmt.Errorf("create output folder %s: %w", dir, err)
+	}
+
+	base := name(filepath.Base(in))
+	candidate := filepath.Join(dir, base)
+
+	stem, ext := splitName(base)
+	for n := 2; ; n++ {
+		_, err := os.Lstat(candidate)
+		if errors.Is(err, fs.ErrNotExist) {
+			return candidate, nil
+		}
+		if err != nil {
+			return "", fmt.Errorf("check output path %s: %w", candidate, err)
+		}
+		if n > maxNameAttempts {
+			return "", fmt.Errorf("no free name for %s in %s after %d tries", base, dir, maxNameAttempts)
+		}
+		candidate = filepath.Join(dir, fmt.Sprintf("%s (%d)%s", stem, n, ext))
+	}
+}
+
+// splitName divides a file name into the part to number and the extension to
+// keep on the end, so "report.pdf.age" numbers as "report.pdf (2).age" and
+// stays openable by extension.
+func splitName(base string) (stem, ext string) {
+	ext = filepath.Ext(base)
+	stem = strings.TrimSuffix(base, ext)
+	// A dotfile like ".bashrc" is all extension by Ext's reckoning, which would
+	// number it as " (2).bashrc" and lose the name.
+	if stem == "" {
+		return base, ""
+	}
+	return stem, ext
 }
 
 // EncryptFile encrypts in to out for the given recipients.

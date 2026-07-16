@@ -81,6 +81,22 @@ Windows, `~/Library/Application Support/encryptor` on macOS.
     contacts.json   public keys only — no secrets
     settings.json   preferences only — no secrets
 
+### Where your files go
+
+Encrypted and decrypted files are saved to your **Downloads** folder, named after
+the file you started with. *Settings* can point each of the two somewhere else —
+they are separate because ciphertext is safe to leave lying around and plaintext
+often is not.
+
+If the name is taken, a number is added (`report.pdf (2).age`) rather than
+replacing what is there. **Show in folder** on the Encrypt and Decrypt screens
+opens the result in your file manager.
+
+The default follows the OS rather than being stored, so it tracks the folder if
+you move it. On Linux that means the real localized folder — `Pobrane`,
+`Téléchargements` — read from freedesktop's `user-dirs.dirs`, not a guessed
+`~/Downloads` sitting next to it.
+
 ## Backing up your key
 
 **`identity.age` is the only copy of your key.** Lose it with no backup and every

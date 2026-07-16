@@ -1,9 +1,11 @@
 <script lang="ts">
-  /** Preferences. Currently just idle auto-lock. */
+  /** Preferences: where files are saved, and idle auto-lock. */
   import { onMount } from 'svelte'
   import { settings, message, type AppSettings } from '../lib/api'
 
   let { announce }: { announce: (m: string) => void } = $props()
+
+  type Which = 'encrypt' | 'decrypt'
 
   // Offered periods. A short list of sensible choices beats a free-text minutes
   // box that invites the user to think about a number they do not care about.
@@ -72,6 +74,53 @@
     minutes = m
     save(true, m)
   }
+
+  // Folder rows below. The picker and the save are two calls on purpose: a
+  // cancelled dialog and "reset to default" both come back as "", and treating
+  // a cancel as a reset would silently undo the user's choice.
+  async function changeDir(which: Which) {
+    error = ''
+    toast = ''
+    const from = which === 'encrypt' ? current?.encryptDir : current?.decryptDir
+    try {
+      const chosen = await settings.chooseDir(
+        which === 'encrypt' ? 'Where to save encrypted files' : 'Where to save decrypted files',
+        from ?? ''
+      )
+      if (!chosen) return // cancelled
+      await applyDir(which, chosen)
+    } catch (e) {
+      error = message(e)
+      announce(error)
+    }
+  }
+
+  async function resetDir(which: Which) {
+    error = ''
+    toast = ''
+    try {
+      await applyDir(which, '')
+    } catch (e) {
+      error = message(e)
+      announce(error)
+    }
+  }
+
+  async function applyDir(which: Which, dir: string) {
+    busy = true
+    try {
+      current =
+        which === 'encrypt'
+          ? await settings.setEncryptDir(dir)
+          : await settings.setDecryptDir(dir)
+      const where = which === 'encrypt' ? current.encryptDir : current.decryptDir
+      toast = `${which === 'encrypt' ? 'Encrypted' : 'Decrypted'} files will be saved to ${where}.`
+      announce(toast)
+    } finally {
+      busy = false
+    }
+  }
+
 </script>
 
 <header>
@@ -85,6 +134,55 @@
 {#if current === null}
   <p>Loading…</p>
 {:else}
+  <section class="card stack">
+    <h3>Where files are saved</h3>
+    <p class="lede">
+      New files go here, named after the file you started with. If that name is
+      already taken, a number is added — nothing is ever replaced.
+    </p>
+
+    <div class="dir">
+      <span class="dir-label" id="encrypt-dir-label">Encrypted files</span>
+      <code class="path" aria-labelledby="encrypt-dir-label">{current.encryptDir}</code>
+      <span class="dir-actions">
+        {#if current.encryptDirIsDefault}
+          <span class="badge">Downloads</span>
+        {/if}
+        <button class="ghost" disabled={busy} onclick={() => changeDir('encrypt')}>
+          Change…
+        </button>
+        {#if !current.encryptDirIsDefault}
+          <button class="ghost" disabled={busy} onclick={() => resetDir('encrypt')}>
+            Use Downloads
+          </button>
+        {/if}
+      </span>
+    </div>
+
+    <div class="dir">
+      <span class="dir-label" id="decrypt-dir-label">Decrypted files</span>
+      <code class="path" aria-labelledby="decrypt-dir-label">{current.decryptDir}</code>
+      <span class="dir-actions">
+        {#if current.decryptDirIsDefault}
+          <span class="badge">Downloads</span>
+        {/if}
+        <button class="ghost" disabled={busy} onclick={() => changeDir('decrypt')}>
+          Change…
+        </button>
+        {#if !current.decryptDirIsDefault}
+          <button class="ghost" disabled={busy} onclick={() => resetDir('decrypt')}>
+            Use Downloads
+          </button>
+        {/if}
+      </span>
+    </div>
+
+    <p class="alert warn">
+      A decrypted file is the plaintext of a secret. Somewhere only you can read
+      is a better home for it than a folder you sync or share.
+    </p>
+  </section>
+
   <section class="card stack">
     <h3>Lock automatically when idle</h3>
     <p class="lede">
@@ -152,6 +250,42 @@
   h2 { margin: 0; }
   h3 { margin: 0; font-size: 1rem; }
   .lede { margin: 0; color: var(--text-dim); }
+
+  .dir {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+  }
+  .dir-label {
+    font-weight: 600;
+    min-width: 9ch;
+  }
+  /* A path is the one thing here the user must be able to read exactly, so it
+     gets the room: it grows, and wraps rather than being cut off with an
+     ellipsis that would hide which folder this actually is. */
+  .path {
+    flex: 1 1 20ch;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    background: var(--surface-2, rgba(127, 127, 127, 0.12));
+    border-radius: 4px;
+    padding: 0.25rem 0.45rem;
+    font-size: 0.85rem;
+  }
+  .dir-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-shrink: 0;
+  }
+  .badge {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    border: 1px solid var(--border, rgba(127, 127, 127, 0.4));
+    border-radius: 999px;
+    padding: 0.05rem 0.5rem;
+  }
   fieldset { border: 0; padding: 0; margin: 0; }
   legend { font-weight: 600; padding: 0; margin-bottom: 0.4rem; }
   .periods { margin-top: 0.4rem; }
