@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"dawidroszman.eu/age-gui/internal/model"
+	"dawidroszman.eu/encryptor/internal/model"
 )
 
 // testWorkFactor keeps scrypt honest but fast. Production uses age's default

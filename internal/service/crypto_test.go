@@ -12,7 +12,7 @@ import (
 	"filippo.io/age"
 	"filippo.io/age/armor"
 
-	"dawidroszman.eu/age-gui/internal/model"
+	"dawidroszman.eu/encryptor/internal/model"
 )
 
 // newCryptoFixture returns a crypto service with an unlocked identity.

@@ -1,7 +1,7 @@
 package view
 
 import (
-	"dawidroszman.eu/age-gui/internal/service"
+	"dawidroszman.eu/encryptor/internal/service"
 )
 
 // Contacts is the Wails-bound handler for the address book.

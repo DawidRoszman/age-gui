@@ -1,4 +1,4 @@
-// Command age-gui is a desktop wrapper around age, so people who don't use a
+// Command encryptor is a desktop wrapper around age, so people who don't use a
 // terminal can still share secrets securely.
 package main
 
@@ -15,9 +15,9 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options/linux"
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 
-	"dawidroszman.eu/age-gui/internal/service"
-	"dawidroszman.eu/age-gui/internal/storage"
-	"dawidroszman.eu/age-gui/internal/view"
+	"dawidroszman.eu/encryptor/internal/service"
+	"dawidroszman.eu/encryptor/internal/storage"
+	"dawidroszman.eu/encryptor/internal/view"
 )
 
 //go:embed all:frontend/dist
@@ -33,7 +33,7 @@ const autoLockInterval = 15 * time.Second
 
 func main() {
 	if err := run(); err != nil {
-		log.Fatalf("age-gui: %v", err)
+		log.Fatalf("encryptor: %v", err)
 	}
 }
 
@@ -82,7 +82,7 @@ func run() error {
 	})
 
 	return wails.Run(&options.App{
-		Title:  "Age GUI",
+		Title:  "Encryptor",
 		Width:  1000,
 		Height: 700,
 		// A hard floor: the sidebar plus content stops being usable below this,
@@ -102,7 +102,7 @@ func run() error {
 			DisableWebViewDrop: true,
 		},
 		Linux: &linux.Options{
-			ProgramName: "Age GUI",
+			ProgramName: "Encryptor",
 		},
 		OnStartup: func(ctx context.Context) {
 			platform.SetContext(ctx)

@@ -1,4 +1,4 @@
-module dawidroszman.eu/age-gui
+module dawidroszman.eu/encryptor
 
 go 1.26.3
 

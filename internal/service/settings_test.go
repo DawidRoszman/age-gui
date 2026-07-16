@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"dawidroszman.eu/age-gui/internal/model"
+	"dawidroszman.eu/encryptor/internal/model"
 )
 
 // fakeSettingsStore is an in-memory SettingsStore.

@@ -1,4 +1,4 @@
-// Package model holds the pure domain types for age-gui.
+// Package model holds the pure domain types for Encryptor.
 //
 // This package knows nothing about storage, the Wails runtime, or the UI.
 // It imports filippo.io/age solely to parse key encodings: age recipients are

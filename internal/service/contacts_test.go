@@ -9,7 +9,7 @@ import (
 
 	"filippo.io/age"
 
-	"dawidroszman.eu/age-gui/internal/model"
+	"dawidroszman.eu/encryptor/internal/model"
 )
 
 func newContactService() *ContactService {

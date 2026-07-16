@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
   Registers .age files with the desktop, so they get an icon in the file manager
-  and offer Age GUI under "Open With".
+  and offer Encryptor under "Open With".
 
   Matched by glob rather than content: the age format's magic bytes
   ("age-encryption.org/v1") only appear in binary files, and armored ones start
@@ -12,6 +12,6 @@
   <mime-type type="application/x-age-encrypted">
     <comment>age encrypted file</comment>
     <glob pattern="*.age"/>
-    <icon name="age-gui"/>
+    <icon name="encryptor"/>
   </mime-type>
 </mime-info>

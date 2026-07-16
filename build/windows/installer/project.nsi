@@ -57,7 +57,7 @@ ManifestDPIAware true
 !define MUI_ABORTWARNING # This will warn the user if they exit from the installer.
 
 !insertmacro MUI_PAGE_WELCOME # Welcome to the installer page.
-# Age GUI is GPLv3, which requires the licence to be shown and to travel with
+# Encryptor is GPLv3, which requires the licence to be shown and to travel with
 # the binary. Paths here are relative to build\windows\installer.
 !insertmacro MUI_PAGE_LICENSE "..\..\..\LICENSE"
 !insertmacro MUI_PAGE_DIRECTORY # In which folder install page.

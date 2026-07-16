@@ -9,7 +9,7 @@ import (
 	"sync"
 	"testing"
 
-	"dawidroszman.eu/age-gui/internal/model"
+	"dawidroszman.eu/encryptor/internal/model"
 	"filippo.io/age"
 )
 

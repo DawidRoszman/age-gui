@@ -17,7 +17,7 @@ import (
 	"filippo.io/age"
 	"filippo.io/age/armor"
 
-	"dawidroszman.eu/age-gui/internal/model"
+	"dawidroszman.eu/encryptor/internal/model"
 )
 
 // Extension appended to encrypted files, matching the age CLI's convention.

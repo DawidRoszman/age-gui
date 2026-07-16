@@ -65,7 +65,7 @@ jobs:
         run: wails build -tags webkit2_41 -ldflags "-s -w"
 
       - name: Verify the binary exists
-        run: test -x build/bin/age-gui
+        run: test -x build/bin/encryptor
 
       - name: Package
         env:
@@ -77,13 +77,13 @@ jobs:
 
           # Plain archive for everyone not on apt or dnf. LICENSE and the
           # third-party notices are required to travel with the binary.
-          install -Dm755 build/bin/age-gui                 "stage/age-gui-$VERSION/age-gui"
-          install -Dm644 build/linux/age-gui.desktop       "stage/age-gui-$VERSION/age-gui.desktop"
-          install -Dm644 build/appicon.png                 "stage/age-gui-$VERSION/age-gui.png"
-          install -Dm644 README.md                         "stage/age-gui-$VERSION/README.md"
-          install -Dm644 LICENSE                           "stage/age-gui-$VERSION/LICENSE"
-          install -Dm644 THIRD_PARTY_LICENSES.md           "stage/age-gui-$VERSION/THIRD_PARTY_LICENSES.md"
-          tar -czf "dist/age-gui-$VERSION-linux-amd64.tar.gz" -C stage "age-gui-$VERSION"
+          install -Dm755 build/bin/encryptor           "stage/encryptor-$VERSION/encryptor"
+          install -Dm644 build/linux/encryptor.desktop "stage/encryptor-$VERSION/encryptor.desktop"
+          install -Dm644 build/appicon.png             "stage/encryptor-$VERSION/encryptor.png"
+          install -Dm644 README.md                     "stage/encryptor-$VERSION/README.md"
+          install -Dm644 LICENSE                       "stage/encryptor-$VERSION/LICENSE"
+          install -Dm644 THIRD_PARTY_LICENSES.md       "stage/encryptor-$VERSION/THIRD_PARTY_LICENSES.md"
+          tar -czf "dist/encryptor-$VERSION-linux-amd64.tar.gz" -C stage "encryptor-$VERSION"
 
       # nfpm and wails both report success in situations that produce nothing
       # useful, so assert the artefacts are really there rather than trusting
@@ -164,7 +164,7 @@ jobs:
         shell: bash
         run: |
           ls -lh build/bin/
-          test -s build/bin/age-gui-amd64-installer.exe || {
+          test -s build/bin/encryptor-amd64-installer.exe || {
             echo "::error::NSIS installer missing — makensis probably was not found (wails only warns)"
             exit 1
           }
@@ -175,9 +175,9 @@ jobs:
           VERSION: ${{ steps.v.outputs.version }}
         run: |
           mkdir -p dist
-          cp build/bin/age-gui-amd64-installer.exe "dist/age-gui-$VERSION-windows-amd64-installer.exe"
+          cp build/bin/encryptor-amd64-installer.exe "dist/encryptor-$VERSION-windows-amd64-installer.exe"
           # Portable exe as well: some people cannot or will not run installers.
-          cp build/bin/age-gui.exe "dist/age-gui-$VERSION-windows-amd64-portable.exe"
+          cp build/bin/encryptor.exe "dist/encryptor-$VERSION-windows-amd64-portable.exe"
           # The portable exe travels with no installer to carry the licences, so
           # they ship alongside it.
           cp LICENSE "dist/LICENSE.txt"
@@ -230,9 +230,9 @@ jobs:
 
       - name: Verify the app bundle
         run: |
-          test -d build/bin/age-gui.app || { echo "::error::no .app bundle"; exit 1; }
+          test -d build/bin/encryptor.app || { echo "::error::no .app bundle"; exit 1; }
           # Prove it really is universal rather than silently single-arch.
-          lipo -archs build/bin/age-gui.app/Contents/MacOS/age-gui
+          lipo -archs build/bin/encryptor.app/Contents/MacOS/encryptor
 
       - name: Stage assets
         env:
@@ -241,8 +241,8 @@ jobs:
           mkdir -p dist
           # The GPL requires the licence to travel with the binary; inside the
           # bundle's Resources is where a .app carries such things.
-          cp LICENSE build/bin/age-gui.app/Contents/Resources/LICENSE.txt
-          cp THIRD_PARTY_LICENSES.md build/bin/age-gui.app/Contents/Resources/
+          cp LICENSE build/bin/encryptor.app/Contents/Resources/LICENSE.txt
+          cp THIRD_PARTY_LICENSES.md build/bin/encryptor.app/Contents/Resources/
 
           # A signature seals Contents/Resources, so the two cp lines above
           # invalidate whatever the build produced. Signing must therefore be
@@ -254,20 +254,20 @@ jobs:
           # "-" is an ad-hoc signature: no certificate, no cost, and it does
           # not make us a verified developer. It only proves the bundle is
           # intact, which is what buys back the Open Anyway route.
-          codesign --force --deep --sign - build/bin/age-gui.app
+          codesign --force --deep --sign - build/bin/encryptor.app
 
           # ditto, not zip: it preserves the bundle's symlinks and metadata,
           # which a plain zip mangles into a .app that will not launch.
-          ditto -c -k --keepParent build/bin/age-gui.app \
-            "dist/age-gui-$VERSION-macos-universal.zip"
+          ditto -c -k --keepParent build/bin/encryptor.app \
+            "dist/encryptor-$VERSION-macos-universal.zip"
 
       # The failure this guards against is invisible until a user downloads the
       # zip on real hardware, so check the seal here instead. --deep verifies
       # the nested code too; strict catches seals that parse but do not hold.
       - name: Verify the signature holds
         run: |
-          codesign --verify --deep --strict --verbose=2 build/bin/age-gui.app
-          codesign --display --verbose=2 build/bin/age-gui.app
+          codesign --verify --deep --strict --verbose=2 build/bin/encryptor.app
+          codesign --display --verbose=2 build/bin/encryptor.app
 
       - uses: actions/upload-artifact@v4
         with:
@@ -318,7 +318,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release create "${{ steps.v.outputs.tag }}" \
-            --title "Age GUI ${{ steps.v.outputs.tag }}" \
+            --title "Encryptor ${{ steps.v.outputs.tag }}" \
             --notes-file NOTES.md \
             --verify-tag \
             assets/*

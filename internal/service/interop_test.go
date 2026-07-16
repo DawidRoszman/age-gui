@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"dawidroszman.eu/age-gui/internal/model"
+	"dawidroszman.eu/encryptor/internal/model"
 )
 
 // These tests run against the real age CLI, using it as an oracle.

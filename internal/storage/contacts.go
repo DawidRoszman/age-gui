@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	"dawidroszman.eu/age-gui/internal/model"
+	"dawidroszman.eu/encryptor/internal/model"
 )
 
 // contactsFileVersion is written alongside the records so a future format
@@ -101,7 +101,7 @@ func (s *Contacts) load() ([]model.Contact, error) {
 		return nil, fmt.Errorf("contacts file %s is not valid JSON: %w", s.path, err)
 	}
 	if doc.Version > contactsFileVersion {
-		return nil, fmt.Errorf("contacts file %s was written by a newer version of age-gui (format %d, this build understands %d)",
+		return nil, fmt.Errorf("contacts file %s was written by a newer version of Encryptor (format %d, this build understands %d)",
 			s.path, doc.Version, contactsFileVersion)
 	}
 	return doc.Contacts, nil

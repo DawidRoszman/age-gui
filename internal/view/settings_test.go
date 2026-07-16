@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"dawidroszman.eu/age-gui/internal/model"
-	"dawidroszman.eu/age-gui/internal/service"
+	"dawidroszman.eu/encryptor/internal/model"
+	"dawidroszman.eu/encryptor/internal/service"
 )
 
 // memSettingsStore is an in-memory service.SettingsStore.

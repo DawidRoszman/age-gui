@@ -13,8 +13,8 @@ package view
 import (
 	"time"
 
-	"dawidroszman.eu/age-gui/internal/model"
-	"dawidroszman.eu/age-gui/internal/service"
+	"dawidroszman.eu/encryptor/internal/model"
+	"dawidroszman.eu/encryptor/internal/service"
 )
 
 // Error is a machine-readable failure for the UI.

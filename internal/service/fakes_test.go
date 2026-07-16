@@ -4,7 +4,7 @@ import (
 	"errors"
 	"sync"
 
-	"dawidroszman.eu/age-gui/internal/model"
+	"dawidroszman.eu/encryptor/internal/model"
 )
 
 // The fakes below are the payoff for declaring ports in this package: every use

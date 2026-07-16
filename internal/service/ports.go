@@ -5,7 +5,7 @@
 // use case here be tested with in-memory fakes and no GUI.
 package service
 
-import "dawidroszman.eu/age-gui/internal/model"
+import "dawidroszman.eu/encryptor/internal/model"
 
 // IdentityStore persists the encrypted identity blob.
 //

@@ -1,8 +1,8 @@
 package view
 
 import (
-	"dawidroszman.eu/age-gui/internal/model"
-	"dawidroszman.eu/age-gui/internal/service"
+	"dawidroszman.eu/encryptor/internal/model"
+	"dawidroszman.eu/encryptor/internal/service"
 )
 
 // EventAutoLocked is emitted when the key is dropped after an idle period, so

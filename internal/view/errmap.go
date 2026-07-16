@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"dawidroszman.eu/age-gui/internal/model"
+	"dawidroszman.eu/encryptor/internal/model"
 )
 
 // Error codes. These are contract with the frontend: the UI branches on them,

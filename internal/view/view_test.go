@@ -11,8 +11,8 @@ import (
 
 	"filippo.io/age"
 
-	"dawidroszman.eu/age-gui/internal/model"
-	"dawidroszman.eu/age-gui/internal/service"
+	"dawidroszman.eu/encryptor/internal/model"
+	"dawidroszman.eu/encryptor/internal/service"
 )
 
 // fakePlatform stands in for the desktop. This is what the Platform port buys:

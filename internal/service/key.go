@@ -15,7 +15,7 @@ import (
 	"filippo.io/age"
 	"filippo.io/age/armor"
 
-	"dawidroszman.eu/age-gui/internal/model"
+	"dawidroszman.eu/encryptor/internal/model"
 )
 
 // identityReadLimit bounds how much plaintext we accept out of the identity

@@ -1,4 +1,4 @@
-# Age GUI
+# Encryptor
 
 A friendly desktop wrapper around [age](https://age-encryption.org), so people
 who don't use a terminal can still share secrets securely.
@@ -15,8 +15,8 @@ Ready-to-use packages are on the
 |---|---|
 | Windows | `…-windows-amd64-installer.exe` (brings WebView2 with it) |
 | macOS | `…-macos-universal.zip` (Apple Silicon and Intel) |
-| Ubuntu / Debian 12+ | `…_amd64.deb` — `sudo apt install ./age-gui_*.deb` |
-| Fedora / RHEL / openSUSE | `…x86_64.rpm` — `sudo dnf install ./age-gui-*.rpm` |
+| Ubuntu / Debian 12+ | `…_amd64.deb` — `sudo apt install ./encryptor_*.deb` |
+| Fedora / RHEL / openSUSE | `…x86_64.rpm` — `sudo dnf install ./encryptor-*.rpm` |
 | Other Linux | `…-linux-amd64.tar.gz` (needs GTK 3 + WebKit2GTK 4.1) |
 
 The `.deb` and `.rpm` pull in GTK and WebKit through your package manager and
@@ -74,8 +74,8 @@ Layered strictly inward: **View → Service → Model**.
 
 ### Where things live
 
-`os.UserConfigDir()`, so: `~/.config/age-gui` on Linux, `%AppData%\age-gui` on
-Windows, `~/Library/Application Support/age-gui` on macOS.
+`os.UserConfigDir()`, so: `~/.config/encryptor` on Linux, `%AppData%\encryptor` on
+Windows, `~/Library/Application Support/encryptor` on macOS.
 
     identity.age    your keypair, encrypted with your passphrase (mode 0600)
     contacts.json   public keys only — no secrets
@@ -189,7 +189,7 @@ The age CLI reads passphrases from `/dev/tty` and refuses a pipe (*"standard
 input is not a terminal"*), so passphrase flows can't be driven from a test
 without a pty. Verify by hand that your key is not locked in:
 
-    age -d ~/.config/age-gui/identity.age
+    age -d ~/.config/encryptor/identity.age
 
 It should prompt for your passphrase and print your `AGE-SECRET-KEY-PQ-1…`.
 
@@ -206,7 +206,7 @@ It should prompt for your passphrase and print your `AGE-SECRET-KEY-PQ-1…`.
 
 ## License
 
-Age GUI is free software licensed under the **GNU General Public License v3.0 or
+Encryptor is free software licensed under the **GNU General Public License v3.0 or
 later**. See [LICENSE](LICENSE).
 
     This program is free software: you can redistribute it and/or modify it

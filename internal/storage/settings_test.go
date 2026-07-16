@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"dawidroszman.eu/age-gui/internal/model"
+	"dawidroszman.eu/encryptor/internal/model"
 )
 
 func TestSettings_DefaultsWhenMissing(t *testing.T) {

@@ -1,4 +1,4 @@
-# Age GUI
+# Encryptor
 
 ## Project requirements
 

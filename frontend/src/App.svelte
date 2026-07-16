@@ -123,7 +123,7 @@
 {#if loadError}
   <main class="centered">
     <div class="card stack" style="max-width: 30rem">
-      <h1>Age GUI</h1>
+      <h1>Encryptor</h1>
       <p class="alert error">{loadError}</p>
       <button class="primary" onclick={refresh}>Try again</button>
     </div>
@@ -147,7 +147,7 @@
 {:else}
   <div class="shell">
     <nav aria-label="Sections">
-      <h1>Age GUI</h1>
+      <h1>Encryptor</h1>
       <ul>
         {#each NAV as item (item.id)}
           <li>

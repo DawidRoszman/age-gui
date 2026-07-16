@@ -73,7 +73,7 @@
 <main class="centered">
 {#if mode === 'choose'}
   <div class="card stack">
-    <h1>Welcome to Age GUI</h1>
+    <h1>Welcome to Encryptor</h1>
     <p class="lede">
       This app locks files so only the people you choose can open them. To start,
       you need a key.

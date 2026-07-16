@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"dawidroszman.eu/age-gui/internal/model"
+	"dawidroszman.eu/encryptor/internal/model"
 )
 
 // fakeClock drives the idle logic through hours without sleeping.

@@ -5,7 +5,7 @@
 # the GTK/WebKit dependencies their package manager will pull in for them.
 #
 # Build with:  nfpm package -f build/linux/nfpm.yaml -p deb -t dist/
-name: age-gui
+name: encryptor
 arch: amd64
 platform: linux
 # Supplied by the release workflow from the git tag.
@@ -24,28 +24,28 @@ homepage: https://github.com/DawidRoszman/age-gui
 license: GPL-3.0-or-later
 
 contents:
-  - src: ./build/bin/age-gui
-    dst: /usr/bin/age-gui
+  - src: ./build/bin/encryptor
+    dst: /usr/bin/encryptor
     file_info:
       mode: 0755
 
-  - src: ./build/linux/age-gui.desktop
-    dst: /usr/share/applications/age-gui.desktop
+  - src: ./build/linux/encryptor.desktop
+    dst: /usr/share/applications/encryptor.desktop
 
   - src: ./build/appicon.png
-    dst: /usr/share/icons/hicolor/512x512/apps/age-gui.png
+    dst: /usr/share/icons/hicolor/512x512/apps/encryptor.png
 
-  - src: ./build/linux/age-gui.xml
-    dst: /usr/share/mime/packages/age-gui.xml
+  - src: ./build/linux/encryptor.xml
+    dst: /usr/share/mime/packages/encryptor.xml
 
   # The GPL requires the licence to travel with the binary, and the BSD/MIT/
   # Apache dependencies require their copyright notices to be reproduced in
   # binary distributions. Shipping without these is a licence violation, not an
   # oversight to tidy up later.
   - src: ./LICENSE
-    dst: /usr/share/doc/age-gui/LICENSE
+    dst: /usr/share/doc/encryptor/LICENSE
   - src: ./THIRD_PARTY_LICENSES.md
-    dst: /usr/share/doc/age-gui/THIRD_PARTY_LICENSES.md
+    dst: /usr/share/doc/encryptor/THIRD_PARTY_LICENSES.md
 
 overrides:
   deb:

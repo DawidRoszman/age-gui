@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	"dawidroszman.eu/age-gui/internal/model"
+	"dawidroszman.eu/encryptor/internal/model"
 )
 
 // settingsFileVersion tracks the on-disk format.

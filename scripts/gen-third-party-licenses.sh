@@ -2,7 +2,7 @@
 # Regenerates THIRD_PARTY_LICENSES.md from the modules actually linked into the
 # binary.
 #
-# This is not paperwork. Age GUI is GPLv3, but its dependencies are BSD, MIT and
+# This is not paperwork. Encryptor is GPLv3, but its dependencies are BSD, MIT and
 # Apache-2.0, and all three require that *binary* distributions reproduce their
 # copyright notices. Shipping a .deb or an installer without them is a licence
 # violation, so this file has to travel inside every package.
@@ -28,7 +28,7 @@ mapfile -t MODULES < <(
 cat <<'HEADER'
 # Third-party licenses
 
-Age GUI is licensed under the GNU General Public License v3.0 or later; see
+Encryptor is licensed under the GNU General Public License v3.0 or later; see
 [LICENSE](LICENSE).
 
 It builds on the work below. Each of these is distributed under a permissive

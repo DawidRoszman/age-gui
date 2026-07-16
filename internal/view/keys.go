@@ -1,7 +1,7 @@
 package view
 
 import (
-	"dawidroszman.eu/age-gui/internal/service"
+	"dawidroszman.eu/encryptor/internal/service"
 )
 
 // defaultPublicKeyFilename is offered in the export dialog. The ".pub" ending
@@ -10,7 +10,7 @@ const defaultPublicKeyFilename = "my-age-public-key.pub"
 
 // defaultBackupFilename is offered in the backup dialog. Named so that a user
 // finding it in a year knows what it is without opening it.
-const defaultBackupFilename = "age-gui-key-backup.age"
+const defaultBackupFilename = "encryptor-key-backup.age"
 
 // Keys is the Wails-bound handler for identity operations.
 //

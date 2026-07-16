@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	"dawidroszman.eu/age-gui/internal/service"
+	"dawidroszman.eu/encryptor/internal/service"
 )
 
 // EventProgress is emitted as an operation runs. The frontend subscribes to it

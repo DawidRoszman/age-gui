@@ -3,7 +3,7 @@ package service
 import (
 	"sync"
 
-	"dawidroszman.eu/age-gui/internal/model"
+	"dawidroszman.eu/encryptor/internal/model"
 )
 
 // SettingsService reads and writes user preferences, and applies the ones that

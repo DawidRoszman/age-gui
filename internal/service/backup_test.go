@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"dawidroszman.eu/age-gui/internal/model"
+	"dawidroszman.eu/encryptor/internal/model"
 )
 
 // The whole point of a backup: a lost machine must not mean lost files.

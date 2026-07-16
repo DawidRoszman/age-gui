@@ -9,7 +9,7 @@ import (
 
 const (
 	// appDir is our subdirectory inside the OS config directory.
-	appDir = "age-gui"
+	appDir = "encryptor"
 
 	// identityFile holds the scrypt-encrypted, armored age identity.
 	identityFile = "identity.age"

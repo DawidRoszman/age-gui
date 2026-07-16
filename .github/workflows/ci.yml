@@ -131,6 +131,6 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: age-gui-${{ matrix.os }}
+          name: encryptor-${{ matrix.os }}
           path: build/bin/*
           if-no-files-found: error

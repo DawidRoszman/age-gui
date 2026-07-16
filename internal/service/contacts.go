@@ -10,7 +10,7 @@ import (
 
 	"filippo.io/age"
 
-	"dawidroszman.eu/age-gui/internal/model"
+	"dawidroszman.eu/encryptor/internal/model"
 )
 
 // recipientFileSizeLimit bounds an imported public key file. Recipient files

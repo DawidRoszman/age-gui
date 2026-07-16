@@ -16,11 +16,11 @@ Share secrets securely, without the command line.
 
 | Your system | File |
 |---|---|
-| **Windows** | \`age-gui-${VERSION}-windows-amd64-installer.exe\` |
-| **macOS** (Apple Silicon or Intel) | \`age-gui-${VERSION}-macos-universal.zip\` |
-| **Ubuntu / Debian** | \`age-gui_${VERSION}_amd64.deb\` |
-| **Fedora / RHEL / openSUSE** | \`age-gui-${VERSION}-1.x86_64.rpm\` |
-| **Other Linux** | \`age-gui-${VERSION}-linux-amd64.tar.gz\` |
+| **Windows** | \`encryptor-${VERSION}-windows-amd64-installer.exe\` |
+| **macOS** (Apple Silicon or Intel) | \`encryptor-${VERSION}-macos-universal.zip\` |
+| **Ubuntu / Debian** | \`encryptor_${VERSION}_amd64.deb\` |
+| **Fedora / RHEL / openSUSE** | \`encryptor-${VERSION}-1.x86_64.rpm\` |
+| **Other Linux** | \`encryptor-${VERSION}-linux-amd64.tar.gz\` |
 
 Windows also has a portable \`.exe\` if you would rather not run an installer.
 
@@ -36,13 +36,13 @@ are not signed — see below. Click **More info**, then **Run anyway**.
 
 ### macOS
 
-Unzip and drag **Age GUI** to your Applications folder.
+Unzip and drag **Encryptor** to your Applications folder.
 
-The first launch will be refused, with a warning that Age GUI cannot be
+The first launch will be refused, with a warning that Encryptor cannot be
 verified or is from an unidentified developer. To allow it:
 
 1. Open **System Settings → Privacy & Security**
-2. Scroll down. There will be a line about Age GUI being blocked
+2. Scroll down. There will be a line about Encryptor being blocked
 3. Click **Open Anyway**
 
 (On macOS 15 and later this is the only route — right-click → Open no longer
@@ -51,7 +51,7 @@ works.)
 ### Ubuntu / Debian
 
 \`\`\`
-sudo apt install ./age-gui_${VERSION}_amd64.deb
+sudo apt install ./encryptor_${VERSION}_amd64.deb
 \`\`\`
 
 Needs Ubuntu 22.04+ or Debian 12+. \`apt\` installs GTK and WebKit for you.
@@ -59,12 +59,12 @@ Needs Ubuntu 22.04+ or Debian 12+. \`apt\` installs GTK and WebKit for you.
 ### Fedora / RHEL / openSUSE
 
 \`\`\`
-sudo dnf install ./age-gui-${VERSION}-1.x86_64.rpm
+sudo dnf install ./encryptor-${VERSION}-1.x86_64.rpm
 \`\`\`
 
 ### Other Linux
 
-Unpack the tarball and run \`age-gui\`. You will need GTK 3 and WebKit2GTK 4.1
+Unpack the tarball and run \`encryptor\`. You will need GTK 3 and WebKit2GTK 4.1
 already installed.
 
 ## About those warnings
@@ -87,7 +87,7 @@ sha256sum -c SHA256SUMS --ignore-missing
 
 ## Your key
 
-Age GUI generates a **post-quantum** keypair (X25519 + ML-KEM-768) and stores it
+Encryptor generates a **post-quantum** keypair (X25519 + ML-KEM-768) and stores it
 encrypted with your passphrase.
 
 **Back it up.** *Your key → Back up your key.* If you lose your key with no

@@ -1,17 +1,17 @@
 [Desktop Entry]
 Type=Application
 Version=1.0
-Name=Age GUI
+Name=Encryptor
 GenericName=File Encryption
 Comment=Share secrets securely, without the command line
-Exec=age-gui %f
-Icon=age-gui
+Exec=encryptor %f
+Icon=encryptor
 Terminal=false
 Categories=Utility;Security;X-GNOME-Utilities;
 Keywords=encrypt;decrypt;age;secure;key;privacy;
 StartupNotify=true
-StartupWMClass=age-gui
-# Offer Age GUI in "Open With" for .age files. The MIME type is registered by
-# age-gui.xml alongside this file; without that registration the association
+StartupWMClass=encryptor
+# Offer Encryptor in "Open With" for .age files. The MIME type is registered by
+# encryptor.xml alongside this file; without that registration the association
 # would be inert.
 MimeType=application/x-age-encrypted;
