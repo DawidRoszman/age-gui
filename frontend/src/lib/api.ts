@@ -83,6 +83,9 @@ export const EVENT_AUTO_LOCKED = 'keys:auto-locked'
 
 export type AppSettings = view.SettingsDTO
 
+/** Themes, mirroring model.Theme in Go. "system" follows the desktop. */
+export type Theme = 'system' | 'light' | 'dark'
+
 export const keys = {
   async status(): Promise<KeyStatus> {
     const r = await KeysGo.Status()
@@ -152,6 +155,10 @@ export const settings = {
   async chooseDir(title: string, startDir: string): Promise<string> {
     const r = await SettingsGo.ChooseDir(title, startDir)
     return unwrap(r, r.value)
+  },
+  async setTheme(theme: Theme): Promise<AppSettings> {
+    const r = await SettingsGo.SetTheme(theme)
+    return unwrap(r, r.settings)
   },
 }
 

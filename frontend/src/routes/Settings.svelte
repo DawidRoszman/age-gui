@@ -1,7 +1,8 @@
 <script lang="ts">
-  /** Preferences: where files are saved, and idle auto-lock. */
+  /** Preferences: where files are saved, idle auto-lock, and appearance. */
   import { onMount } from 'svelte'
-  import { settings, message, type AppSettings } from '../lib/api'
+  import { settings, message, type AppSettings, type Theme } from '../lib/api'
+  import { applyTheme, themeOf } from '../lib/theme'
 
   let { announce }: { announce: (m: string) => void } = $props()
 
@@ -10,6 +11,12 @@
   // Offered periods. A short list of sensible choices beats a free-text minutes
   // box that invites the user to think about a number they do not care about.
   const CHOICES = [1, 5, 15, 30, 60, 240]
+
+  const THEMES: { id: Theme; label: string }[] = [
+    { id: 'system', label: 'Match my desktop' },
+    { id: 'light', label: 'Light' },
+    { id: 'dark', label: 'Dark' },
+  ]
 
   let current = $state<AppSettings | null>(null)
   let error = $state('')
@@ -20,6 +27,8 @@
   // does not flicker back while the save is in flight.
   let enabled = $state(true)
   let minutes = $state(15)
+  let theme = $state<Theme>('system')
+  let themeBusy = $state(false)
 
   onMount(async () => {
     try {
@@ -27,6 +36,7 @@
       current = s
       enabled = s.autoLockEnabled
       minutes = s.autoLockEnabled ? s.autoLockMinutes : 15
+      theme = themeOf(s)
     } catch (e) {
       error = message(e)
     }
@@ -121,6 +131,38 @@
     }
   }
 
+  /**
+   * Repaints immediately, then persists.
+   *
+   * Optimistic on purpose: the whole point of the control is to see the colours
+   * change, and waiting on a disk write to find out what a theme looks like
+   * makes the app feel slow. A failed save puts the old theme back, so the
+   * screen never disagrees with what is stored.
+   */
+  async function onTheme(next: Theme) {
+    const previous = theme
+    theme = next
+    applyTheme(next)
+
+    themeBusy = true
+    error = ''
+    try {
+      const s = await settings.setTheme(next)
+      current = s
+      theme = themeOf(s)
+      applyTheme(theme)
+      // No toast: the repaint is the feedback. The announcement is for people
+      // who cannot see it.
+      announce(`Theme set to ${THEMES.find((t) => t.id === theme)?.label}.`)
+    } catch (e) {
+      error = message(e)
+      theme = previous
+      applyTheme(previous)
+      announce(error)
+    } finally {
+      themeBusy = false
+    }
+  }
 </script>
 
 <header>
@@ -243,10 +285,35 @@
       <p class="alert ok">{toast}</p>
     {/if}
   </section>
+
+  <section class="card stack">
+    <h3>Appearance</h3>
+    <p class="lede">
+      Encryptor follows your desktop's light or dark setting unless you tell it
+      otherwise.
+    </p>
+
+    <fieldset>
+      <legend class="sr-only">Theme</legend>
+      {#each THEMES as t (t.id)}
+        <label class="choice">
+          <input
+            type="radio"
+            name="theme"
+            checked={theme === t.id}
+            disabled={themeBusy}
+            onchange={() => onTheme(t.id)}
+          />
+          <span>{t.label}</span>
+        </label>
+      {/each}
+    </fieldset>
+  </section>
 {/if}
 
 <style>
   header { margin-bottom: 1rem; }
+  section + section { margin-top: 1rem; }
   h2 { margin: 0; }
   h3 { margin: 0; font-size: 1rem; }
   .lede { margin: 0; color: var(--text-dim); }

@@ -22,7 +22,7 @@ func TestSettings_DefaultsWhenMissing(t *testing.T) {
 
 func TestSettings_RoundTrip(t *testing.T) {
 	s := NewSettings(t.TempDir())
-	want := model.Settings{AutoLockMinutes: 42}
+	want := model.Settings{AutoLockMinutes: 42, Theme: model.ThemeDark}
 
 	if err := s.Save(want); err != nil {
 		t.Fatalf("Save: %v", err)
@@ -50,6 +50,49 @@ func TestSettings_DisabledSurvivesRoundTrip(t *testing.T) {
 	}
 	if got.AutoLockEnabled() {
 		t.Fatal("the user disabled auto-lock and it came back enabled after a reload")
+	}
+}
+
+// The theme was added after the first release, so files in the wild have no
+// theme field. Reading one must leave the user's other preferences alone: the
+// whole file failing validation over the missing field would reset the
+// auto-lock period they deliberately chose, which they would discover only by
+// noticing the app locking at the wrong time.
+func TestSettings_FileWithoutThemeKeepsOtherPreferences(t *testing.T) {
+	dir := t.TempDir()
+	s := NewSettings(dir)
+	if err := os.WriteFile(s.Path(), []byte(`{"version":1,"settings":{"autoLockMinutes":45}}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := s.Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if got.AutoLockMinutes != 45 {
+		t.Errorf("AutoLockMinutes = %d, want the stored 45", got.AutoLockMinutes)
+	}
+	if got.Theme != model.DefaultTheme {
+		t.Errorf("Theme = %q, want the default %q", got.Theme, model.DefaultTheme)
+	}
+}
+
+// A theme this build does not know how to paint is not worth resetting the
+// whole file over, but it must not be honoured either.
+func TestSettings_UnknownThemeFallsBackToDefaults(t *testing.T) {
+	dir := t.TempDir()
+	s := NewSettings(dir)
+	body := `{"version":1,"settings":{"autoLockMinutes":45,"theme":"solarized"}}`
+	if err := os.WriteFile(s.Path(), []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := s.Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if !got.Theme.Valid() {
+		t.Errorf("Load() = %q, want a theme the app can paint", got.Theme)
 	}
 }
 

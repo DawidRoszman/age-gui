@@ -92,6 +92,71 @@ func TestSettingsHandler_DisableAutoLock(t *testing.T) {
 	}
 }
 
+func TestSettingsHandler_DefaultsToFollowingTheDesktop(t *testing.T) {
+	h, _ := newSettingsHandler(t)
+
+	if got := h.Get().Settings.Theme; got != string(model.ThemeSystem) {
+		t.Errorf("Theme = %q by default, want %q", got, model.ThemeSystem)
+	}
+}
+
+func TestSettingsHandler_SetTheme(t *testing.T) {
+	h, _ := newSettingsHandler(t)
+
+	for _, want := range []model.Theme{model.ThemeDark, model.ThemeLight, model.ThemeSystem} {
+		res := h.SetTheme(string(want))
+		if res.Error != nil {
+			t.Fatalf("SetTheme(%q): %+v", want, res.Error)
+		}
+		if res.Settings.Theme != string(want) {
+			t.Errorf("Theme = %q, want %q", res.Settings.Theme, want)
+		}
+		if got := h.Get().Settings.Theme; got != string(want) {
+			t.Errorf("Get() = %q after setting %q", got, want)
+		}
+	}
+}
+
+// Setting the theme must not disturb the security-relevant setting sitting next
+// to it in the same struct.
+func TestSettingsHandler_SetThemeLeavesAutoLockAlone(t *testing.T) {
+	h, _ := newSettingsHandler(t)
+
+	if res := h.SetAutoLock(model.AutoLockDisabled); res.Error != nil {
+		t.Fatal(res.Error)
+	}
+	res := h.SetTheme(string(model.ThemeDark))
+	if res.Error != nil {
+		t.Fatal(res.Error)
+	}
+	if res.Settings.AutoLockEnabled {
+		t.Error("changing the theme turned auto-lock back on")
+	}
+
+	if res := h.SetAutoLock(30); res.Error != nil {
+		t.Fatal(res.Error)
+	}
+	if got := h.Get().Settings.Theme; got != string(model.ThemeDark) {
+		t.Errorf("Theme = %q after an auto-lock change, want dark", got)
+	}
+}
+
+func TestSettingsHandler_RejectsUnknownTheme(t *testing.T) {
+	h, _ := newSettingsHandler(t)
+
+	res := h.SetTheme("solarized")
+	if res.Error == nil {
+		t.Fatal("SetTheme(solarized) = nil, want an error")
+	}
+	if res.Error.Code != CodeInvalidSettings {
+		t.Errorf("Code = %q, want %s", res.Error.Code, CodeInvalidSettings)
+	}
+	// A rejected value must still report the theme actually in force.
+	if res.Settings.Theme != string(model.DefaultTheme) {
+		t.Errorf("Theme = %q after a rejected update, want the unchanged default", res.Settings.Theme)
+	}
+}
+
 func TestSettingsHandler_RejectsOutOfRange(t *testing.T) {
 	h, _ := newSettingsHandler(t)
 

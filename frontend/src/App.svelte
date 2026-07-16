@@ -1,7 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import { EventsOn, EventsOff } from '../wailsjs/runtime/runtime'
-  import { keys, message, EVENT_AUTO_LOCKED, type KeyStatus } from './lib/api'
+  import { keys, settings, message, EVENT_AUTO_LOCKED, type KeyStatus } from './lib/api'
+  import { applyTheme, themeOf } from './lib/theme'
   import Onboarding from './routes/Onboarding.svelte'
   import Unlock from './routes/Unlock.svelte'
   import KeysView from './routes/Keys.svelte'
@@ -50,6 +51,15 @@
 
   onMount(() => {
     refresh()
+
+    // Paint in the user's theme before they see anything. Deliberately not
+    // awaited alongside the key status: the theme is cosmetic, so it must not
+    // hold up the unlock screen, and a failure here is not worth an error page
+    // when the fallback is simply the desktop's own theme.
+    settings
+      .get()
+      .then((s) => applyTheme(themeOf(s)))
+      .catch(() => {})
 
     // Go owns the idle clock and the decision to lock; it just cannot see the
     // user. When it locks, move them to the unlock screen rather than leave

@@ -30,6 +30,37 @@ const (
 	DefaultAutoLockMinutes = 15
 )
 
+// Theme selects the colour scheme the UI paints in.
+type Theme string
+
+// The available themes.
+const (
+	// ThemeSystem follows the desktop's light/dark preference. The default:
+	// the app runs in a webview alongside every other window on the machine,
+	// and one that ignores the desktop looks broken rather than opinionated.
+	ThemeSystem Theme = "system"
+
+	// ThemeLight and ThemeDark override the desktop. Worth having despite the
+	// default being right for most people: plenty of users run a light desktop
+	// and want dark tools (or the reverse), and some can only read one of them
+	// comfortably. That is not a preference to make someone re-litigate with
+	// their OS settings.
+	ThemeLight Theme = "light"
+	ThemeDark  Theme = "dark"
+)
+
+// DefaultTheme is what a new install starts with.
+const DefaultTheme = ThemeSystem
+
+// Valid reports whether t is a theme the app knows how to paint.
+func (t Theme) Valid() bool {
+	switch t {
+	case ThemeSystem, ThemeLight, ThemeDark:
+		return true
+	}
+	return false
+}
+
 // Settings holds user preferences.
 //
 // Preferences only — never secrets, so settings.json is safe to read, sync, and
@@ -49,6 +80,9 @@ type Settings struct {
 	// EncryptDir because the two have genuinely different risk: ciphertext is
 	// safe to leave in a shared folder, plaintext often is not.
 	DecryptDir string `json:"decryptDir"`
+
+	// Theme is the colour scheme, ThemeSystem to follow the desktop.
+	Theme Theme `json:"theme"`
 }
 
 // DefaultSettings returns the settings a new install starts with.
@@ -57,7 +91,10 @@ type Settings struct {
 // resolved path instead would freeze today's location into the file and leave
 // a stale absolute path behind if the user ever moved it.
 func DefaultSettings() Settings {
-	return Settings{AutoLockMinutes: DefaultAutoLockMinutes}
+	return Settings{
+		AutoLockMinutes: DefaultAutoLockMinutes,
+		Theme:           DefaultTheme,
+	}
 }
 
 // Validate checks the settings are usable.
@@ -67,6 +104,10 @@ func (s Settings) Validate() error {
 	}
 	if err := validateSaveDir("decrypted", s.DecryptDir); err != nil {
 		return err
+	}
+	if !s.Theme.Valid() {
+		return fmt.Errorf("%w: theme must be %q, %q, or %q",
+			ErrInvalidSettings, ThemeSystem, ThemeLight, ThemeDark)
 	}
 	if s.AutoLockMinutes == AutoLockDisabled {
 		return nil

@@ -34,6 +34,9 @@ type SettingsDTO struct {
 	// DefaultDir is the downloads folder, so the UI can name what "reset"
 	// means without guessing.
 	DefaultDir string `json:"defaultDir"`
+
+	// Theme is "system", "light", or "dark".
+	Theme string `json:"theme"`
 }
 
 // SettingsResult wraps settings.
@@ -69,6 +72,7 @@ func (h *Settings) dto(s model.Settings) SettingsDTO {
 		EncryptDirIsDefault: s.EncryptDir == "",
 		DecryptDirIsDefault: s.DecryptDir == "",
 		DefaultDir:          h.settings.DefaultSaveDir(),
+		Theme:               string(s.Theme),
 	}
 }
 
@@ -122,4 +126,14 @@ func (h *Settings) update(next model.Settings) SettingsResult {
 		return SettingsResult{Settings: h.dto(updated), Error: mapError(err)}
 	}
 	return SettingsResult{Settings: h.dto(updated)}
+}
+
+// SetTheme configures the colour scheme: "system", "light", or "dark".
+//
+// An unknown value is rejected rather than quietly treated as "system", so a
+// typo surfaces here instead of as a theme that mysteriously will not stick.
+func (h *Settings) SetTheme(theme string) SettingsResult {
+	next := h.settings.Get()
+	next.Theme = model.Theme(theme)
+	return h.update(next)
 }

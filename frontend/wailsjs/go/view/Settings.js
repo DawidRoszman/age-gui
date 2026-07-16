@@ -21,3 +21,7 @@ export function SetDecryptDir(arg1) {
 export function SetEncryptDir(arg1) {
   return window['go']['view']['Settings']['SetEncryptDir'](arg1);
 }
+
+export function SetTheme(arg1) {
+  return window['go']['view']['Settings']['SetTheme'](arg1);
+}

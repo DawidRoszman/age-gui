@@ -3,6 +3,7 @@ package model
 import (
 	"errors"
 	"runtime"
+	"strings"
 	"testing"
 )
 
@@ -21,12 +22,20 @@ func TestDefaultSettings_LeavesSaveFoldersUnset(t *testing.T) {
 	}
 }
 
+// valid returns settings that pass Validate, for a test to spoil one field of.
+//
+// Built from the defaults rather than a literal: a literal silently acquires a
+// zero value for every field added later, so these tests would start failing --
+// or worse, passing for the wrong reason -- each time a setting appears.
+func valid() Settings { return DefaultSettings() }
+
 func TestSettings_ValidateAcceptsAbsoluteSaveFolders(t *testing.T) {
 	dir := "/srv/secrets"
 	if runtime.GOOS == "windows" {
 		dir = `C:\secrets`
 	}
-	s := Settings{AutoLockMinutes: DefaultAutoLockMinutes, EncryptDir: dir, DecryptDir: dir}
+	s := valid()
+	s.EncryptDir, s.DecryptDir = dir, dir
 
 	if err := s.Validate(); err != nil {
 		t.Errorf("Validate(%q) = %v, want nil", dir, err)
@@ -38,21 +47,31 @@ func TestSettings_ValidateAcceptsAbsoluteSaveFolders(t *testing.T) {
 // this has to be refused at the boundary rather than discovered later.
 func TestSettings_ValidateRejectsRelativeSaveFolders(t *testing.T) {
 	for _, tc := range []struct {
-		name string
-		s    Settings
+		name    string
+		spoil   func(*Settings)
+		wantDir string
 	}{
-		{"encrypt", Settings{AutoLockMinutes: 15, EncryptDir: "relative/path"}},
-		{"decrypt", Settings{AutoLockMinutes: 15, DecryptDir: "relative/path"}},
-		{"bare name", Settings{AutoLockMinutes: 15, EncryptDir: "Downloads"}},
-		{"dot", Settings{AutoLockMinutes: 15, DecryptDir: "."}},
+		{"encrypt", func(s *Settings) { s.EncryptDir = "relative/path" }, "encrypted"},
+		{"decrypt", func(s *Settings) { s.DecryptDir = "relative/path" }, "decrypted"},
+		{"bare name", func(s *Settings) { s.EncryptDir = "Downloads" }, "encrypted"},
+		{"dot", func(s *Settings) { s.DecryptDir = "." }, "decrypted"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			err := tc.s.Validate()
+			s := valid()
+			tc.spoil(&s)
+
+			err := s.Validate()
 			if err == nil {
 				t.Fatal("Validate = nil, want a rejection")
 			}
 			if !errors.Is(err, ErrInvalidSettings) {
 				t.Errorf("Validate = %v, want ErrInvalidSettings", err)
+			}
+			// Everything else about these settings is valid, so the complaint
+			// must name the folder. Without this the test would pass on any
+			// rejection at all, including one about an unrelated field.
+			if !strings.Contains(err.Error(), tc.wantDir) {
+				t.Errorf("Validate = %v, want it to name the %s folder", err, tc.wantDir)
 			}
 		})
 	}
@@ -61,9 +80,14 @@ func TestSettings_ValidateRejectsRelativeSaveFolders(t *testing.T) {
 // Auto-lock and the save folders are independent; a bad folder must not be
 // reported as an auto-lock problem, and vice versa.
 func TestSettings_ValidateStillChecksAutoLock(t *testing.T) {
-	s := Settings{AutoLockMinutes: MaxAutoLockMinutes + 1}
+	s := valid()
+	s.AutoLockMinutes = MaxAutoLockMinutes + 1
 
-	if err := s.Validate(); !errors.Is(err, ErrInvalidSettings) {
-		t.Errorf("Validate = %v, want ErrInvalidSettings", err)
+	err := s.Validate()
+	if !errors.Is(err, ErrInvalidSettings) {
+		t.Fatalf("Validate = %v, want ErrInvalidSettings", err)
+	}
+	if !strings.Contains(err.Error(), "auto-lock") {
+		t.Errorf("Validate = %v, want it to name auto-lock", err)
 	}
 }

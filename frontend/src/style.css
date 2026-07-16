@@ -1,5 +1,17 @@
 /* Design tokens. Light and dark are both first-class: this runs in a webview
-   that follows the desktop theme, and a tool that ignores it looks broken. */
+   that follows the desktop theme, and a tool that ignores it looks broken.
+
+   The theme setting is expressed as data-theme on <html>:
+
+     absent  follow the desktop (the default, and what is in force for the
+             moment between startup and the settings arriving from Go)
+     light   force light
+     dark    force dark
+
+   Absent rather than data-theme="system" is what lets the media query below do
+   the following-the-desktop work on its own, with no matchMedia listener in JS
+   to keep in sync. The cost is that the dark palette is written twice; the two
+   blocks must be kept in step. */
 :root {
   --bg: #f6f7f9;
   --surface: #ffffff;
@@ -21,8 +33,9 @@
   color-scheme: light dark;
 }
 
+/* Dark desktop, unless the user has asked for light. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg: #16181d;
     --surface: #1e2128;
     --surface-2: #262a33;
@@ -40,6 +53,32 @@
     --focus: #7aa5ff;
   }
 }
+
+/* Dark by choice, whatever the desktop is doing. Same specificity as the rule
+   above, so it must stay after it to win on a light desktop. */
+:root[data-theme="dark"] {
+  --bg: #16181d;
+  --surface: #1e2128;
+  --surface-2: #262a33;
+  --border: #363b47;
+  --text: #e8eaee;
+  --text-dim: #9aa3b2;
+  --accent: #5b8def;
+  --accent-text: #0b0d11;
+  --danger: #ff6b5e;
+  --danger-bg: #3a1f1d;
+  --warn-bg: #3a2f1c;
+  --warn-border: #e9a23b;
+  --ok: #57d08a;
+  --ok-bg: #1b3327;
+  --focus: #7aa5ff;
+}
+
+/* Native controls, scrollbars, and the webview's own backdrop take their cue
+   from color-scheme, not from the tokens. Without this an overridden theme
+   would leave light scrollbars framing a dark app. */
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"] { color-scheme: dark; }
 
 * { box-sizing: border-box; }
 

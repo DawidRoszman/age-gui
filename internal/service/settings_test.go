@@ -62,7 +62,7 @@ func TestSettings_DefaultsHaveAutoLockOn(t *testing.T) {
 func TestSettings_StoredValueAppliedAtStartup(t *testing.T) {
 	clock := newFakeClock()
 	keys := NewKeyService(&fakeIdentityStore{}, withWorkFactor(testWorkFactor), withClock(clock.Now))
-	store := &fakeSettingsStore{settings: model.Settings{AutoLockMinutes: 3}, saved: true}
+	store := &fakeSettingsStore{settings: model.Settings{AutoLockMinutes: 3, Theme: model.DefaultTheme}, saved: true}
 
 	if _, err := NewSettingsService(store, keys, t.TempDir()); err != nil {
 		t.Fatal(err)
@@ -82,7 +82,7 @@ func TestSettings_StoredDisabledAppliedAtStartup(t *testing.T) {
 	clock := newFakeClock()
 	keys := NewKeyService(&fakeIdentityStore{}, withWorkFactor(testWorkFactor), withClock(clock.Now))
 	store := &fakeSettingsStore{
-		settings: model.Settings{AutoLockMinutes: model.AutoLockDisabled},
+		settings: model.Settings{AutoLockMinutes: model.AutoLockDisabled, Theme: model.DefaultTheme},
 		saved:    true,
 	}
 
@@ -105,7 +105,7 @@ func TestSettings_UpdateAppliesImmediately(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := svc.Update(model.Settings{AutoLockMinutes: 2}); err != nil {
+	if _, err := svc.Update(model.Settings{AutoLockMinutes: 2, Theme: model.DefaultTheme}); err != nil {
 		t.Fatalf("Update: %v", err)
 	}
 
@@ -125,7 +125,7 @@ func TestSettings_DisableStopsAutoLock(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := svc.Update(model.Settings{AutoLockMinutes: model.AutoLockDisabled}); err != nil {
+	if _, err := svc.Update(model.Settings{AutoLockMinutes: model.AutoLockDisabled, Theme: model.DefaultTheme}); err != nil {
 		t.Fatalf("Update(disabled): %v", err)
 	}
 
@@ -138,7 +138,7 @@ func TestSettings_DisableStopsAutoLock(t *testing.T) {
 func TestSettings_UpdatePersists(t *testing.T) {
 	svc, _, store, _ := newSettingsFixture(t)
 
-	if _, err := svc.Update(model.Settings{AutoLockMinutes: 45}); err != nil {
+	if _, err := svc.Update(model.Settings{AutoLockMinutes: 45, Theme: model.DefaultTheme}); err != nil {
 		t.Fatal(err)
 	}
 	if store.settings.AutoLockMinutes != 45 {
@@ -154,7 +154,7 @@ func TestSettings_UpdateRejectsOutOfRange(t *testing.T) {
 		"too large": model.MaxAutoLockMinutes + 1,
 	} {
 		t.Run(name, func(t *testing.T) {
-			_, err := svc.Update(model.Settings{AutoLockMinutes: mins})
+			_, err := svc.Update(model.Settings{AutoLockMinutes: mins, Theme: model.DefaultTheme})
 			if !errors.Is(err, model.ErrInvalidSettings) {
 				t.Fatalf("Update(%d) = %v, want ErrInvalidSettings", mins, err)
 			}
@@ -169,10 +169,10 @@ func TestSettings_UpdateRejectsOutOfRange(t *testing.T) {
 func TestSettings_RejectedUpdateKeepsCurrent(t *testing.T) {
 	svc, _, _, _ := newSettingsFixture(t)
 
-	if _, err := svc.Update(model.Settings{AutoLockMinutes: 20}); err != nil {
+	if _, err := svc.Update(model.Settings{AutoLockMinutes: 20, Theme: model.DefaultTheme}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := svc.Update(model.Settings{AutoLockMinutes: -1}); err == nil {
+	if _, err := svc.Update(model.Settings{AutoLockMinutes: -1, Theme: model.DefaultTheme}); err == nil {
 		t.Fatal("want error")
 	}
 	if got := svc.Get().AutoLockMinutes; got != 20 {
@@ -189,7 +189,7 @@ func TestSettings_FailedSaveDoesNotApply(t *testing.T) {
 	}
 	store.failSave = errors.New("disk full")
 
-	if _, err := svc.Update(model.Settings{AutoLockMinutes: model.AutoLockDisabled}); err == nil {
+	if _, err := svc.Update(model.Settings{AutoLockMinutes: model.AutoLockDisabled, Theme: model.DefaultTheme}); err == nil {
 		t.Fatal("Update = nil despite the store failing")
 	}
 	if !svc.Get().AutoLockEnabled() {
@@ -215,7 +215,7 @@ func TestSettings_Validate(t *testing.T) {
 		"too large": {model.MaxAutoLockMinutes + 1, false},
 	} {
 		t.Run(name, func(t *testing.T) {
-			err := model.Settings{AutoLockMinutes: tc.mins}.Validate()
+			err := model.Settings{AutoLockMinutes: tc.mins, Theme: model.DefaultTheme}.Validate()
 			if tc.ok && err != nil {
 				t.Errorf("Validate(%d) = %v, want nil", tc.mins, err)
 			}
@@ -223,6 +223,61 @@ func TestSettings_Validate(t *testing.T) {
 				t.Errorf("Validate(%d) = nil, want error", tc.mins)
 			}
 		})
+	}
+}
+
+func TestSettings_ValidateTheme(t *testing.T) {
+	for name, tc := range map[string]struct {
+		theme model.Theme
+		ok    bool
+	}{
+		"system":  {model.ThemeSystem, true},
+		"light":   {model.ThemeLight, true},
+		"dark":    {model.ThemeDark, true},
+		"unknown": {model.Theme("solarized"), false},
+		// The zero value is not a theme. It reaches Validate only from a
+		// settings file written before the field existed, and storage fills it
+		// in before it gets this far.
+		"empty": {model.Theme(""), false},
+		// Themes are a fixed set, not free text: the UI paints from it.
+		"case mismatch": {model.Theme("Dark"), false},
+	} {
+		t.Run(name, func(t *testing.T) {
+			err := model.Settings{
+				AutoLockMinutes: model.DefaultAutoLockMinutes,
+				Theme:           tc.theme,
+			}.Validate()
+			if tc.ok && err != nil {
+				t.Errorf("Validate(%q) = %v, want nil", tc.theme, err)
+			}
+			if !tc.ok && !errors.Is(err, model.ErrInvalidSettings) {
+				t.Errorf("Validate(%q) = %v, want ErrInvalidSettings", tc.theme, err)
+			}
+		})
+	}
+}
+
+// The theme is a preference like any other: set it, restart, it is still there.
+func TestSettings_ThemePersistsAndSurvivesUpdate(t *testing.T) {
+	svc, _, store, _ := newSettingsFixture(t)
+
+	next := svc.Get()
+	next.Theme = model.ThemeDark
+	if _, err := svc.Update(next); err != nil {
+		t.Fatalf("Update(dark): %v", err)
+	}
+	if store.settings.Theme != model.ThemeDark {
+		t.Errorf("stored Theme = %q, want dark", store.settings.Theme)
+	}
+
+	// Changing an unrelated setting must not quietly reset it.
+	next = svc.Get()
+	next.AutoLockMinutes = 5
+	if _, err := svc.Update(next); err != nil {
+		t.Fatal(err)
+	}
+	if got := svc.Get().Theme; got != model.ThemeDark {
+		t.Errorf("Theme = %q after an auto-lock change, want dark", got)
 	}
 }
 

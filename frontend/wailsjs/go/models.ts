@@ -233,6 +233,7 @@ export namespace view {
 	    encryptDirIsDefault: boolean;
 	    decryptDirIsDefault: boolean;
 	    defaultDir: string;
+	    theme: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new SettingsDTO(source);
@@ -249,6 +250,7 @@ export namespace view {
 	        this.encryptDirIsDefault = source["encryptDirIsDefault"];
 	        this.decryptDirIsDefault = source["decryptDirIsDefault"];
 	        this.defaultDir = source["defaultDir"];
+	        this.theme = source["theme"];
 	    }
 	}
 	export class SettingsResult {

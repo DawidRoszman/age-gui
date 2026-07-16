@@ -11,3 +11,5 @@ export function SetAutoLock(arg1:number):Promise<view.SettingsResult>;
 export function SetDecryptDir(arg1:string):Promise<view.SettingsResult>;
 
 export function SetEncryptDir(arg1:string):Promise<view.SettingsResult>;
+
+export function SetTheme(arg1:string):Promise<view.SettingsResult>;

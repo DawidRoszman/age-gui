@@ -60,6 +60,13 @@ func (s *Settings) Load() (model.Settings, error) {
 	if err := json.Unmarshal(b, &doc); err != nil {
 		return model.DefaultSettings(), nil
 	}
+	// A file written before the theme existed has no theme field, which decodes
+	// to the empty string. Fill it in before validating: without this the whole
+	// file would fail validation and every upgrading user would silently lose
+	// the auto-lock period they had chosen.
+	if doc.Settings.Theme == "" {
+		doc.Settings.Theme = model.DefaultTheme
+	}
 	// A value from a future version, or one hand-edited out of range, must not
 	// silently become an unlocked-forever session.
 	if err := doc.Settings.Validate(); err != nil {
