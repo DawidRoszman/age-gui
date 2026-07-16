@@ -38,8 +38,8 @@ are not signed — see below. Click **More info**, then **Run anyway**.
 
 Unzip and drag **Age GUI** to your Applications folder.
 
-The first launch will be refused: **"Age GUI cannot be opened because the
-developer cannot be verified"**. To allow it:
+The first launch will be refused, with a warning that Age GUI cannot be
+verified or is from an unidentified developer. To allow it:
 
 1. Open **System Settings → Privacy & Security**
 2. Scroll down. There will be a line about Age GUI being blocked
