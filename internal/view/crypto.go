@@ -3,8 +3,10 @@ package view
 import (
 	"context"
 	"path/filepath"
+	"slices"
 	"sync"
 
+	"dawidroszman.eu/encryptor/internal/model"
 	"dawidroszman.eu/encryptor/internal/service"
 )
 
@@ -109,11 +111,16 @@ func (h *Crypto) Inspect(path string) FileKindResult {
 
 // Encrypt encrypts in for the given contacts and returns the output path.
 //
+// includeSelf adds the user's own key so they can open the file too. It is a
+// separate flag rather than a contact id because the user is not a contact of
+// their own; encrypting only to yourself (no contacts, includeSelf) is valid
+// and produces a file just for your own storage.
+//
 // An empty out means "use the default name beside the input", which refuses to
 // overwrite. A non-empty out comes from ChooseSavePath, where the user already
 // confirmed any replacement.
-func (h *Crypto) Encrypt(jobID, in, out string, contactIDs []string) StringResult {
-	keys, err := h.contacts.Recipients(contactIDs)
+func (h *Crypto) Encrypt(jobID, in, out string, contactIDs []string, includeSelf bool) StringResult {
+	keys, err := h.recipients(contactIDs, includeSelf)
 	if err != nil {
 		return StringResult{Error: mapError(err)}
 	}
@@ -129,6 +136,46 @@ func (h *Crypto) Encrypt(jobID, in, out string, contactIDs []string) StringResul
 		return StringResult{Error: mapError(err)}
 	}
 	return StringResult{Value: out}
+}
+
+// recipients resolves the selected contacts, plus the user's own key when
+// includeSelf is set, into the key list to encrypt to.
+//
+// Self is deduped against the contacts in case the user has added their own key
+// as a contact and picked it too: age would otherwise list the same recipient
+// twice. An empty result (no contacts and not including self) is reported as
+// ErrNoRecipients, the same as picking nobody.
+func (h *Crypto) recipients(contactIDs []string, includeSelf bool) ([]model.PublicKey, error) {
+	var keys []model.PublicKey
+	if len(contactIDs) > 0 {
+		ck, err := h.contacts.Recipients(contactIDs)
+		if err != nil {
+			return nil, err
+		}
+		keys = ck
+	}
+
+	if includeSelf {
+		self, err := h.crypto.SelfRecipient()
+		if err != nil {
+			return nil, err
+		}
+		if !slices.ContainsFunc(keys, self.Equal) {
+			keys = append(keys, self)
+		}
+	}
+
+	if len(keys) == 0 {
+		return nil, model.ErrNoRecipients
+	}
+	// Catch a mix of quantum-resistant and classic keys here, with a message
+	// the user can act on, rather than letting age fail mid-encryption. This is
+	// especially easy to hit with includeSelf, since the user's own key is
+	// always quantum-resistant.
+	if !model.RecipientsCompatible(keys) {
+		return nil, model.ErrIncompatibleRecipients
+	}
+	return keys, nil
 }
 
 // EncryptWithPassphrase encrypts in under a passphrase.

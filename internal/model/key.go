@@ -114,6 +114,26 @@ func (k PublicKey) IsZero() bool { return k.value == "" }
 // Equal compares two keys by their encoding.
 func (k PublicKey) Equal(other PublicKey) bool { return k.value == other.value }
 
+// RecipientsCompatible reports whether these keys can all appear in one
+// encrypted file.
+//
+// age refuses to mix a hybrid post-quantum key with a classic one: the file
+// would be only as strong as its weakest recipient, defeating the point of the
+// post-quantum key. This lets the app catch that combination and explain it,
+// rather than letting age fail deep inside encryption with an opaque message.
+func RecipientsCompatible(keys []PublicKey) bool {
+	var hasPQ, hasClassic bool
+	for _, k := range keys {
+		switch k.Type() {
+		case KeyTypeHybridPQ:
+			hasPQ = true
+		case KeyTypeX25519:
+			hasClassic = true
+		}
+	}
+	return !(hasPQ && hasClassic)
+}
+
 // Abbrev returns a short display form. Hybrid keys run to roughly 2000
 // characters, so they must never be rendered raw in a list.
 func (k PublicKey) Abbrev() string {

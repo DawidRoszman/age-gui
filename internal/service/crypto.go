@@ -103,6 +103,17 @@ func NewCryptoService(keys *KeyService, opts ...cryptoOption) *CryptoService {
 	return s
 }
 
+// SelfRecipient returns the user's own public key, for encrypting a file so
+// they can open it themselves.
+//
+// It fails with ErrLocked when the key is locked, because the public key is
+// only held in memory while unlocked. In practice the encrypt screen is only
+// reachable unlocked, but an idle auto-lock can race an in-flight encrypt, and
+// this surfaces that as a normal "unlock to continue" rather than a crash.
+func (s *CryptoService) SelfRecipient() (model.PublicKey, error) {
+	return s.keys.PublicKey()
+}
+
 // EncryptedName returns the conventional output path for encrypting in.
 func EncryptedName(in string) string { return in + Extension }
 

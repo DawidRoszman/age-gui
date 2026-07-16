@@ -122,9 +122,38 @@ func (m *memContactStore) Delete(id string) error {
 	return model.ErrContactNotFound
 }
 
+// memGroupStore is an in-memory service.GroupStore.
+type memGroupStore struct{ groups []model.Group }
+
+func (m *memGroupStore) List() ([]model.Group, error) {
+	return append([]model.Group(nil), m.groups...), nil
+}
+
+func (m *memGroupStore) Put(g model.Group) error {
+	for i := range m.groups {
+		if m.groups[i].ID == g.ID {
+			m.groups[i] = g
+			return nil
+		}
+	}
+	m.groups = append(m.groups, g)
+	return nil
+}
+
+func (m *memGroupStore) Delete(id string) error {
+	for i := range m.groups {
+		if m.groups[i].ID == id {
+			m.groups = append(m.groups[:i:i], m.groups[i+1:]...)
+			return nil
+		}
+	}
+	return model.ErrGroupNotFound
+}
+
 type fixture struct {
 	keys     *Keys
 	contacts *Contacts
+	groups   *Groups
 	crypto   *Crypto
 	settings *Settings
 	platform *fakePlatform
@@ -139,7 +168,11 @@ func newFixture(t *testing.T) *fixture {
 	platform := &fakePlatform{}
 	keySvc := service.NewKeyService(&memIdentityStore{})
 	contactSvc := service.NewContactService(&memContactStore{})
+	groupSvc := service.NewGroupService(&memGroupStore{})
 	cryptoSvc := service.NewCryptoService(keySvc)
+
+	// The same cascade main.go wires, so tests exercise the real deletion path.
+	contactSvc.SetOnDelete(func(id string) { _ = groupSvc.PruneContact(id) })
 
 	saveDir := t.TempDir()
 	settingsSvc, err := service.NewSettingsService(&memSettingsStore{}, keySvc, saveDir)
@@ -150,6 +183,7 @@ func newFixture(t *testing.T) *fixture {
 	return &fixture{
 		keys:     NewKeys(keySvc, platform),
 		contacts: NewContacts(contactSvc, platform),
+		groups:   NewGroups(groupSvc),
 		crypto:   NewCrypto(cryptoSvc, contactSvc, settingsSvc, platform),
 		settings: NewSettings(settingsSvc, platform),
 		platform: platform,
@@ -424,7 +458,7 @@ func TestCrypto_EncryptDecryptRoundTrip(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	enc := f.crypto.Encrypt("job1", in, "", []string{add.Contact.ID})
+	enc := f.crypto.Encrypt("job1", in, "", []string{add.Contact.ID}, false)
 	if enc.Error != nil {
 		t.Fatalf("Encrypt: %+v", enc.Error)
 	}
@@ -469,7 +503,7 @@ func TestCrypto_DecryptWhileLockedReportsLocked(t *testing.T) {
 	if err := os.WriteFile(in, []byte("x"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	enc := f.crypto.Encrypt("j1", in, "", []string{add.Contact.ID})
+	enc := f.crypto.Encrypt("j1", in, "", []string{add.Contact.ID}, false)
 	if enc.Error != nil {
 		t.Fatal(enc.Error)
 	}
@@ -499,7 +533,7 @@ func TestCrypto_DefaultOutputNumbersAroundExistingFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	res := f.crypto.Encrypt("j1", in, "", []string{add.Contact.ID})
+	res := f.crypto.Encrypt("j1", in, "", []string{add.Contact.ID}, false)
 	if res.Error != nil {
 		t.Fatalf("Encrypt = %+v, want it to number around the collision", res.Error)
 	}
@@ -511,7 +545,7 @@ func TestCrypto_DefaultOutputNumbersAroundExistingFile(t *testing.T) {
 	}
 
 	// And again: the third file must not land on the second either.
-	res = f.crypto.Encrypt("j2", in, "", []string{add.Contact.ID})
+	res = f.crypto.Encrypt("j2", in, "", []string{add.Contact.ID}, false)
 	if res.Error != nil {
 		t.Fatalf("Encrypt: %+v", res.Error)
 	}
@@ -538,7 +572,7 @@ func TestCrypto_ChosenOutputPathIsUsedVerbatim(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	res := f.crypto.Encrypt("j1", in, chosen, []string{add.Contact.ID})
+	res := f.crypto.Encrypt("j1", in, chosen, []string{add.Contact.ID}, false)
 	if res.Error != nil {
 		t.Fatalf("Encrypt: %+v", res.Error)
 	}

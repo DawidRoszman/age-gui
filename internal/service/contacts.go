@@ -21,11 +21,24 @@ const recipientFileSizeLimit = 1 << 20 // 1 MiB
 // ContactService manages the address book.
 type ContactService struct {
 	store ContactStore
+
+	// onDelete, when set, runs after a contact is removed. It lets a deletion
+	// cascade — pruning the contact from groups — without ContactService
+	// having to know that groups exist. The same callback shape KeyService
+	// uses for auto-lock notifications.
+	onDelete func(id string)
 }
 
 // NewContactService builds a ContactService over the given store.
 func NewContactService(store ContactStore) *ContactService {
 	return &ContactService{store: store}
+}
+
+// SetOnDelete registers a callback run after a contact is successfully deleted,
+// with that contact's id. Wired at composition time to prune the contact from
+// groups.
+func (s *ContactService) SetOnDelete(fn func(id string)) {
+	s.onDelete = fn
 }
 
 // List returns contacts sorted by name, so the UI order is stable and
@@ -145,9 +158,21 @@ func (s *ContactService) Rename(id, name, note string) (model.Contact, error) {
 	return c, nil
 }
 
-// Delete removes a contact.
+// Delete removes a contact, then prunes it from any groups.
+//
+// The cascade runs only after the contact is actually gone, and its own failure
+// is not propagated: the contact has been deleted, which is what the caller
+// asked for, and a leftover group reference is harmless — group expansion
+// ignores ids that no longer resolve. Reporting a pruning error would wrongly
+// tell the user the delete failed.
 func (s *ContactService) Delete(id string) error {
-	return s.store.Delete(id)
+	if err := s.store.Delete(id); err != nil {
+		return err
+	}
+	if s.onDelete != nil {
+		s.onDelete(id)
+	}
+	return nil
 }
 
 // Recipients resolves contact IDs to public keys for encryption.

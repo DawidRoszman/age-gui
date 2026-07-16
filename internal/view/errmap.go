@@ -10,24 +10,27 @@ import (
 // Error codes. These are contract with the frontend: the UI branches on them,
 // so they must stay stable even if the wording changes.
 const (
-	CodeLocked             = "LOCKED"
-	CodeNoIdentity         = "NO_IDENTITY"
-	CodeIdentityExists     = "IDENTITY_EXISTS"
-	CodeWrongPassphrase    = "WRONG_PASSPHRASE"
-	CodeCorruptIdentity    = "CORRUPT_IDENTITY"
-	CodeNotForYou          = "NOT_FOR_YOU"
-	CodePassphraseRequired = "PASSPHRASE_REQUIRED"
-	CodeKeyRequired        = "KEY_REQUIRED"
-	CodeTargetExists       = "TARGET_EXISTS"
-	CodeDuplicateContact   = "DUPLICATE_CONTACT"
-	CodeContactNotFound    = "CONTACT_NOT_FOUND"
-	CodeNoRecipients       = "NO_RECIPIENTS"
-	CodeSecretKeyGiven     = "SECRET_KEY_GIVEN"
-	CodeEmptyPassphrase    = "EMPTY_PASSPHRASE"
-	CodeInvalidSettings    = "INVALID_SETTINGS"
-	CodeNotAnIdentityFile  = "NOT_AN_IDENTITY_FILE"
-	CodeCancelled          = "CANCELLED"
-	CodeInternal           = "INTERNAL"
+	CodeLocked                 = "LOCKED"
+	CodeNoIdentity             = "NO_IDENTITY"
+	CodeIdentityExists         = "IDENTITY_EXISTS"
+	CodeWrongPassphrase        = "WRONG_PASSPHRASE"
+	CodeCorruptIdentity        = "CORRUPT_IDENTITY"
+	CodeNotForYou              = "NOT_FOR_YOU"
+	CodePassphraseRequired     = "PASSPHRASE_REQUIRED"
+	CodeKeyRequired            = "KEY_REQUIRED"
+	CodeTargetExists           = "TARGET_EXISTS"
+	CodeDuplicateContact       = "DUPLICATE_CONTACT"
+	CodeContactNotFound        = "CONTACT_NOT_FOUND"
+	CodeGroupNotFound          = "GROUP_NOT_FOUND"
+	CodeInvalidGroup           = "INVALID_GROUP"
+	CodeNoRecipients           = "NO_RECIPIENTS"
+	CodeIncompatibleRecipients = "INCOMPATIBLE_RECIPIENTS"
+	CodeSecretKeyGiven         = "SECRET_KEY_GIVEN"
+	CodeEmptyPassphrase        = "EMPTY_PASSPHRASE"
+	CodeInvalidSettings        = "INVALID_SETTINGS"
+	CodeNotAnIdentityFile      = "NOT_AN_IDENTITY_FILE"
+	CodeCancelled              = "CANCELLED"
+	CodeInternal               = "INTERNAL"
 )
 
 // mapError converts a domain error into a UI error.
@@ -80,8 +83,19 @@ func mapError(err error) *Error {
 	case errors.Is(err, model.ErrContactNotFound):
 		return &Error{CodeContactNotFound, "That contact no longer exists.", true}
 
+	case errors.Is(err, model.ErrGroupNotFound):
+		return &Error{CodeGroupNotFound, "That group no longer exists.", true}
+
+	case errors.Is(err, model.ErrInvalidGroup):
+		// The service's message already names what was wrong (empty or too
+		// long), so pass it through.
+		return &Error{CodeInvalidGroup, err.Error(), true}
+
 	case errors.Is(err, model.ErrNoRecipients):
 		return &Error{CodeNoRecipients, "Choose at least one person to encrypt this for.", true}
+
+	case errors.Is(err, model.ErrIncompatibleRecipients):
+		return &Error{CodeIncompatibleRecipients, "You can't mix quantum-resistant and classic keys in one file. Everyone this is encrypted for — including you, if you tick \"let me open this\" — must use the same kind of key. Your own key is quantum-resistant.", true}
 
 	case errors.Is(err, model.ErrSecretKeyGiven):
 		// The user is holding a private key and may be about to send it to

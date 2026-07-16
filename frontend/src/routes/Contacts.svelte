@@ -1,16 +1,32 @@
 <script lang="ts">
-  /** The address book: other people's public keys. */
+  /** The address book: other people's public keys, and groups of them. */
   import { onMount } from 'svelte'
-  import { contacts, message, type Contact } from '../lib/api'
+  import { contacts, groups, message, type Contact, type Group } from '../lib/api'
   import Dialog from '../lib/Dialog.svelte'
+  import GroupForm from '../lib/GroupForm.svelte'
 
   let { announce }: { announce: (m: string) => void } = $props()
+
+  let tab = $state<'people' | 'groups'>('people')
 
   let all = $state<Contact[]>([])
   let query = $state('')
   let error = $state('')
   let toast = $state('')
   let searchBox: HTMLInputElement | undefined = $state()
+
+  // Groups
+  let allGroups = $state<Group[]>([])
+  let showGroupForm = $state(false)
+  let editingGroup = $state<Group | null>(null)
+  let pendingGroupDelete = $state<Group | null>(null)
+
+  // Contact names for a group, resolved against the live contact list so a
+  // member deleted elsewhere simply drops out rather than showing a stale id.
+  function memberNames(g: Group): string[] {
+    const byId = new Map(all.map((c) => [c.id, c.name]))
+    return g.memberIds.map((id) => byId.get(id)).filter((n): n is string => !!n)
+  }
 
   // Add form
   let showAdd = $state(false)
@@ -33,7 +49,7 @@
 
   async function load() {
     try {
-      all = await contacts.list()
+      ;[all, allGroups] = await Promise.all([contacts.list(), groups.list()])
       error = ''
     } catch (e) {
       error = message(e)
@@ -41,6 +57,43 @@
   }
 
   onMount(load)
+
+  function newGroup() {
+    editingGroup = null
+    showGroupForm = true
+  }
+
+  function editGroup(g: Group) {
+    editingGroup = g
+    showGroupForm = true
+  }
+
+  async function saveGroup(name: string, memberIds: string[]) {
+    // Throws on failure so GroupForm shows the message inline and stays open.
+    if (editingGroup) {
+      await groups.update(editingGroup.id, name, memberIds)
+      toast = `${name} updated.`
+    } else {
+      await groups.create(name, memberIds)
+      toast = `${name} created.`
+    }
+    await load()
+    announce(toast)
+  }
+
+  async function confirmGroupDelete() {
+    const g = pendingGroupDelete
+    if (!g) return
+    pendingGroupDelete = null
+    try {
+      await groups.remove(g.id)
+      await load()
+      toast = `${g.name} removed.`
+      announce(toast)
+    } catch (e) {
+      error = message(e)
+    }
+  }
 
   function onKeydown(e: KeyboardEvent) {
     // "/" focuses search, the way it does in most list UIs — but never while
@@ -127,25 +180,41 @@
   <div class="row">
     <div>
       <h2>Contacts</h2>
-      <p class="lede">People you can encrypt files for.</p>
+      <p class="lede">People you can encrypt files for, and groups of them.</p>
     </div>
     <div class="spacer"></div>
-    <button class="primary" onclick={() => { resetAdd(); showAdd = true }}>
-      Add a contact
+    {#if tab === 'people'}
+      <button class="primary" onclick={() => { resetAdd(); showAdd = true }}>
+        Add a contact
+      </button>
+    {:else}
+      <button class="primary" disabled={all.length === 0} onclick={newGroup}>
+        New group
+      </button>
+    {/if}
+  </div>
+
+  <div class="tabs" role="tablist" aria-label="Contacts and groups">
+    <button
+      role="tab"
+      class="tab"
+      class:active={tab === 'people'}
+      aria-selected={tab === 'people'}
+      onclick={() => (tab = 'people')}
+    >
+      People
+    </button>
+    <button
+      role="tab"
+      class="tab"
+      class:active={tab === 'groups'}
+      aria-selected={tab === 'groups'}
+      onclick={() => (tab = 'groups')}
+    >
+      Groups {#if allGroups.length}<span class="pill">{allGroups.length}</span>{/if}
     </button>
   </div>
 </header>
-
-<div class="field">
-  <label for="search">Search</label>
-  <input
-    id="search"
-    type="text"
-    placeholder="Filter by name…  (press / to jump here)"
-    bind:this={searchBox}
-    bind:value={query}
-  />
-</div>
 
 {#if error}
   <p class="alert error" role="alert">{error}</p>
@@ -154,42 +223,97 @@
   <p class="alert ok">{toast}</p>
 {/if}
 
-{#if all.length === 0}
+{#if tab === 'people'}
+  <div class="field">
+    <label for="search">Search</label>
+    <input
+      id="search"
+      type="text"
+      placeholder="Filter by name…  (press / to jump here)"
+      bind:this={searchBox}
+      bind:value={query}
+    />
+  </div>
+
+  {#if all.length === 0}
+    <div class="card empty">
+      <p><strong>No contacts yet.</strong></p>
+      <p class="lede">
+        Ask someone for their public key — it starts with <code>age1</code> — then
+        add it here. After that you can encrypt files for them.
+      </p>
+    </div>
+  {:else if filtered.length === 0}
+    <p class="lede">Nothing matches “{query}”.</p>
+  {:else}
+    <ul class="list">
+      {#each filtered as c (c.id)}
+        <li class="card">
+          <div class="row">
+            <div class="who">
+              <div class="row">
+                <strong>{c.name}</strong>
+                {#if c.keyType === 'hybrid-pq'}
+                  <span class="badge pq">Quantum-resistant</span>
+                {:else}
+                  <span class="badge">Classic</span>
+                {/if}
+              </div>
+              <!-- Abbreviated: a post-quantum key is ~2000 characters. -->
+              <code class="abbrev">{c.abbrev}</code>
+              {#if c.note}<p class="hint">{c.note}</p>{/if}
+            </div>
+            <div class="spacer"></div>
+            <button onclick={() => copyKey(c)} aria-label={`Copy ${c.name}'s public key`}>
+              Copy key
+            </button>
+            <button
+              class="danger"
+              onclick={() => (pendingDelete = c)}
+              aria-label={`Remove ${c.name}`}
+            >
+              Remove
+            </button>
+          </div>
+        </li>
+      {/each}
+    </ul>
+  {/if}
+{:else if allGroups.length === 0}
   <div class="card empty">
-    <p><strong>No contacts yet.</strong></p>
+    <p><strong>No groups yet.</strong></p>
     <p class="lede">
-      Ask someone for their public key — it starts with <code>age1</code> — then
-      add it here. After that you can encrypt files for them.
+      {#if all.length === 0}
+        Add a few contacts first, then gather them into groups so you can encrypt
+        for everyone at once.
+      {:else}
+        Gather the people you often encrypt for into a group, so you can pick them
+        all in one click. Start with <strong>New group</strong>.
+      {/if}
     </p>
   </div>
-{:else if filtered.length === 0}
-  <p class="lede">Nothing matches “{query}”.</p>
 {:else}
   <ul class="list">
-    {#each filtered as c (c.id)}
+    {#each allGroups as g (g.id)}
       <li class="card">
         <div class="row">
           <div class="who">
-            <div class="row">
-              <strong>{c.name}</strong>
-              {#if c.keyType === 'hybrid-pq'}
-                <span class="badge pq">Quantum-resistant</span>
+            <strong>{g.name}</strong>
+            <p class="hint">
+              {#if g.memberCount === 0}
+                No members yet
               {:else}
-                <span class="badge">Classic</span>
+                {memberNames(g).join(', ')}
               {/if}
-            </div>
-            <!-- Abbreviated: a post-quantum key is ~2000 characters. -->
-            <code class="abbrev">{c.abbrev}</code>
-            {#if c.note}<p class="hint">{c.note}</p>{/if}
+            </p>
           </div>
           <div class="spacer"></div>
-          <button onclick={() => copyKey(c)} aria-label={`Copy ${c.name}'s public key`}>
-            Copy key
-          </button>
+          <span class="badge">{g.memberCount} {g.memberCount === 1 ? 'person' : 'people'}</span>
+          <button onclick={() => editGroup(g)} aria-label={`Edit ${g.name}`}>Edit</button>
           <button
             class="danger"
-            onclick={() => (pendingDelete = c)}
-            aria-label={`Remove ${c.name}`}
+            onclick={() => (pendingGroupDelete = g)}
+            aria-label={`Remove ${g.name}`}
           >
             Remove
           </button>
@@ -252,7 +376,59 @@
   {/snippet}
 </Dialog>
 
+<GroupForm
+  bind:open={showGroupForm}
+  title={editingGroup ? 'Edit group' : 'New group'}
+  saveLabel={editingGroup ? 'Save changes' : 'Create group'}
+  {all}
+  initialName={editingGroup?.name ?? ''}
+  initialMemberIds={editingGroup?.memberIds ?? []}
+  onsave={saveGroup}
+/>
+
+<Dialog
+  open={pendingGroupDelete !== null}
+  onclose={() => (pendingGroupDelete = null)}
+  title="Remove this group?"
+>
+  <p>
+    Remove the group <strong>{pendingGroupDelete?.name}</strong>? The contacts in
+    it are not affected — only the group itself is deleted.
+  </p>
+  {#snippet footer()}
+    <button type="button" onclick={() => (pendingGroupDelete = null)}>Cancel</button>
+    <button class="primary danger" type="button" onclick={confirmGroupDelete}>Remove</button>
+  {/snippet}
+</Dialog>
+
 <style>
+  .tabs {
+    display: flex;
+    gap: 0.3rem;
+    margin-top: 0.8rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .tab {
+    background: transparent;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    padding: 0.4rem 0.7rem;
+    color: var(--text-dim);
+    cursor: pointer;
+  }
+  .tab.active {
+    color: var(--text);
+    border-bottom-color: var(--accent);
+    font-weight: 600;
+  }
+  .pill {
+    font-size: 0.72rem;
+    background: var(--surface-2);
+    border-radius: 999px;
+    padding: 0 0.4rem;
+    color: var(--text-dim);
+  }
   header { margin-bottom: 1rem; }
   h2 { margin: 0 0 0.2rem; }
   .lede { margin: 0; color: var(--text-dim); }

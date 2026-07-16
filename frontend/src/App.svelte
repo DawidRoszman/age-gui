@@ -185,7 +185,7 @@
       {:else if route === 'contacts'}
         <ContactsView {announce} />
       {:else if route === 'encrypt'}
-        <Encrypt {announce} />
+        <Encrypt {announce} onLocked={refresh} />
       {:else if route === 'decrypt'}
         <Decrypt {announce} onLocked={refresh} />
       {:else}

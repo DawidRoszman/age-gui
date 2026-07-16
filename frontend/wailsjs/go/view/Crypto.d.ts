@@ -12,7 +12,7 @@ export function Decrypt(arg1:string,arg2:string,arg3:string):Promise<view.String
 
 export function DecryptWithPassphrase(arg1:string,arg2:string,arg3:string,arg4:string):Promise<view.StringResult>;
 
-export function Encrypt(arg1:string,arg2:string,arg3:string,arg4:Array<string>):Promise<view.StringResult>;
+export function Encrypt(arg1:string,arg2:string,arg3:string,arg4:Array<string>,arg5:boolean):Promise<view.StringResult>;
 
 export function EncryptWithPassphrase(arg1:string,arg2:string,arg3:string,arg4:string):Promise<view.StringResult>;
 

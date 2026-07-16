@@ -22,8 +22,8 @@ export function DecryptWithPassphrase(arg1, arg2, arg3, arg4) {
   return window['go']['view']['Crypto']['DecryptWithPassphrase'](arg1, arg2, arg3, arg4);
 }
 
-export function Encrypt(arg1, arg2, arg3, arg4) {
-  return window['go']['view']['Crypto']['Encrypt'](arg1, arg2, arg3, arg4);
+export function Encrypt(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['view']['Crypto']['Encrypt'](arg1, arg2, arg3, arg4, arg5);
 }
 
 export function EncryptWithPassphrase(arg1, arg2, arg3, arg4) {

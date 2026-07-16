@@ -48,8 +48,20 @@ var (
 	// ErrContactNotFound means no contact matched the given id.
 	ErrContactNotFound = errors.New("contact not found")
 
+	// ErrGroupNotFound means no group matched the given id.
+	ErrGroupNotFound = errors.New("group not found")
+
+	// ErrInvalidGroup means a group value was rejected, such as an empty or
+	// over-long name.
+	ErrInvalidGroup = errors.New("invalid group")
+
 	// ErrNoRecipients means an encrypt request named no recipients.
 	ErrNoRecipients = errors.New("no recipients selected")
+
+	// ErrIncompatibleRecipients means the chosen recipients mix quantum-resistant
+	// and classic keys, which age refuses to encrypt to together. Its own message
+	// is opaque, so this is caught early and explained.
+	ErrIncompatibleRecipients = errors.New("cannot mix quantum-resistant and classic recipients")
 
 	// ErrSecretKeyGiven means the user supplied a private key where a public
 	// key was expected. Worth its own error: it is a plausible mistake and the

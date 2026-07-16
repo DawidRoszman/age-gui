@@ -38,3 +38,14 @@ type ContactStore interface {
 	// no such contact exists.
 	Delete(id string) error
 }
+
+// GroupStore persists contact groups.
+type GroupStore interface {
+	// List returns every group, or an empty slice if there are none.
+	List() ([]model.Group, error)
+	// Put inserts or replaces a group by ID.
+	Put(g model.Group) error
+	// Delete removes a group by ID, returning model.ErrGroupNotFound if no
+	// such group exists.
+	Delete(id string) error
+}

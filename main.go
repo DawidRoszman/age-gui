@@ -49,6 +49,7 @@ func run() error {
 	// Storage adapters implement the ports declared in the service package.
 	identityStore := storage.NewIdentity(dir)
 	contactStore := storage.NewContacts(dir)
+	groupStore := storage.NewGroups(dir)
 	settingsStore := storage.NewSettings(dir)
 
 	// Services. Note no options are passed: production always gets age's full
@@ -56,7 +57,13 @@ func run() error {
 	// and unreachable from here by construction.
 	keySvc := service.NewKeyService(identityStore)
 	contactSvc := service.NewContactService(contactStore)
+	groupSvc := service.NewGroupService(groupStore)
 	cryptoSvc := service.NewCryptoService(keySvc)
+
+	// Deleting a contact prunes it from every group, so a group never keeps a
+	// dangling member. Wired here rather than inside ContactService so that
+	// layer stays ignorant of groups.
+	contactSvc.SetOnDelete(func(id string) { _ = groupSvc.PruneContact(id) })
 
 	// Where output goes when the user has not chosen a folder. Resolved once
 	// here rather than per operation: it cannot change while the app runs, and
@@ -83,6 +90,7 @@ func run() error {
 
 	keysHandler := view.NewKeys(keySvc, platform)
 	contactsHandler := view.NewContacts(contactSvc, platform)
+	groupsHandler := view.NewGroups(groupSvc)
 	cryptoHandler := view.NewCrypto(cryptoSvc, contactSvc, settingsSvc, platform)
 	settingsHandler := view.NewSettings(settingsSvc, platform)
 
@@ -134,6 +142,7 @@ func run() error {
 		Bind: []any{
 			keysHandler,
 			contactsHandler,
+			groupsHandler,
 			cryptoHandler,
 			settingsHandler,
 		},

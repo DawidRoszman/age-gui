@@ -8,6 +8,7 @@
 
 import * as KeysGo from '../../wailsjs/go/view/Keys'
 import * as ContactsGo from '../../wailsjs/go/view/Contacts'
+import * as GroupsGo from '../../wailsjs/go/view/Groups'
 import * as CryptoGo from '../../wailsjs/go/view/Crypto'
 import * as SettingsGo from '../../wailsjs/go/view/Settings'
 import { view } from '../../wailsjs/go/models'
@@ -57,6 +58,7 @@ function unwrap<T>(res: { error?: view.Error }, value: T): T {
 
 export type KeyStatus = view.KeyStatusDTO
 export type Contact = view.ContactDTO
+export type Group = view.GroupDTO
 
 /**
  * Mirrors view.ProgressEvent in Go.
@@ -189,6 +191,24 @@ export const contacts = {
   },
 }
 
+export const groups = {
+  async list(): Promise<Group[]> {
+    const r = await GroupsGo.List()
+    return unwrap(r, r.groups)
+  },
+  async create(name: string, memberIds: string[]): Promise<Group> {
+    const r = await GroupsGo.Create(name, memberIds)
+    return unwrap(r, r.group)
+  },
+  async update(id: string, name: string, memberIds: string[]): Promise<Group> {
+    const r = await GroupsGo.Update(id, name, memberIds)
+    return unwrap(r, r.group)
+  },
+  async remove(id: string): Promise<void> {
+    unwrap(await GroupsGo.Delete(id), undefined)
+  },
+}
+
 export type FileKind = 'passphrase' | 'recipients'
 
 export const crypto = {
@@ -224,9 +244,17 @@ export const crypto = {
   /**
    * `out` empty means the save folder from Settings, with a numbered name if
    * something is already there. Nothing is ever overwritten.
+   *
+   * `includeSelf` adds the user's own key, so they can open the file too.
    */
-  async encrypt(jobId: string, input: string, out: string, contactIds: string[]): Promise<string> {
-    const r = await CryptoGo.Encrypt(jobId, input, out, contactIds)
+  async encrypt(
+    jobId: string,
+    input: string,
+    out: string,
+    contactIds: string[],
+    includeSelf: boolean
+  ): Promise<string> {
+    const r = await CryptoGo.Encrypt(jobId, input, out, contactIds, includeSelf)
     return unwrap(r, r.value)
   },
   async encryptWithPassphrase(jobId: string, input: string, out: string, passphrase: string): Promise<string> {

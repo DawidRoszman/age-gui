@@ -17,6 +17,10 @@ const (
 	// contactsFile holds public keys only.
 	contactsFile = "contacts.json"
 
+	// groupsFile holds named sets of contact IDs. No secrets: it references
+	// contacts by id and holds no key material.
+	groupsFile = "groups.json"
+
 	// settingsFile holds user preferences. No secrets.
 	settingsFile = "settings.json"
 

@@ -76,6 +76,31 @@ type ContactResult struct {
 	Error   *Error     `json:"error,omitempty"`
 }
 
+// GroupDTO is a group as the UI sees it.
+type GroupDTO struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	// MemberIDs are contact IDs. The frontend resolves them against its live
+	// contact list, so a member deleted between refreshes simply does not
+	// appear.
+	MemberIDs []string `json:"memberIds"`
+	// MemberCount is the stored member total, saved for a list that only needs
+	// the number and not the names.
+	MemberCount int `json:"memberCount"`
+}
+
+// GroupsResult wraps a group list.
+type GroupsResult struct {
+	Groups []GroupDTO `json:"groups"`
+	Error  *Error     `json:"error,omitempty"`
+}
+
+// GroupResult wraps a single group.
+type GroupResult struct {
+	Group GroupDTO `json:"group"`
+	Error *Error   `json:"error,omitempty"`
+}
+
 // VoidResult reports success or failure with no payload.
 type VoidResult struct {
 	Error *Error `json:"error,omitempty"`
@@ -142,6 +167,28 @@ func contactDTOs(cs []model.Contact) []ContactDTO {
 	out := make([]ContactDTO, 0, len(cs))
 	for _, c := range cs {
 		out = append(out, contactDTO(c))
+	}
+	return out
+}
+
+// groupDTO converts a domain group.
+func groupDTO(g model.Group) GroupDTO {
+	// Never nil: JSON null would make the frontend guard every iteration.
+	members := make([]string, 0, len(g.MemberIDs))
+	members = append(members, g.MemberIDs...)
+	return GroupDTO{
+		ID:          g.ID,
+		Name:        g.Name,
+		MemberIDs:   members,
+		MemberCount: len(members),
+	}
+}
+
+// groupDTOs converts a slice of domain groups.
+func groupDTOs(gs []model.Group) []GroupDTO {
+	out := make([]GroupDTO, 0, len(gs))
+	for _, g := range gs {
+		out = append(out, groupDTO(g))
 	}
 	return out
 }

@@ -94,8 +94,46 @@ func (f *fakeContactStore) Delete(id string) error {
 	return model.ErrContactNotFound
 }
 
+// fakeGroupStore is an in-memory GroupStore.
+type fakeGroupStore struct {
+	mu     sync.Mutex
+	groups []model.Group
+}
+
+func (f *fakeGroupStore) List() ([]model.Group, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]model.Group(nil), f.groups...), nil
+}
+
+func (f *fakeGroupStore) Put(g model.Group) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for i := range f.groups {
+		if f.groups[i].ID == g.ID {
+			f.groups[i] = g
+			return nil
+		}
+	}
+	f.groups = append(f.groups, g)
+	return nil
+}
+
+func (f *fakeGroupStore) Delete(id string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for i := range f.groups {
+		if f.groups[i].ID == id {
+			f.groups = append(f.groups[:i:i], f.groups[i+1:]...)
+			return nil
+		}
+	}
+	return model.ErrGroupNotFound
+}
+
 // Compile-time proof the fakes satisfy the ports they stand in for.
 var (
 	_ IdentityStore = (*fakeIdentityStore)(nil)
 	_ ContactStore  = (*fakeContactStore)(nil)
+	_ GroupStore    = (*fakeGroupStore)(nil)
 )
