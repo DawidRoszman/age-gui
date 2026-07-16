@@ -8,6 +8,27 @@ section here fails rather than publishing without notes.
 Newest first. Use `## <version>` with no `v` prefix, matching the tag minus the
 `v`.
 
+## 0.5.0
+
+**Groups.** Gather the people you often encrypt for into a named group, then pick
+the whole group in one click instead of ticking everyone each time. Manage groups
+on the new **Groups** tab of the Contacts screen. A group is only a shortcut for
+choosing people — the file is still encrypted to each person individually, and
+removing a contact quietly removes them from any groups too.
+
+**A clearer "who can open this?"** The Encrypt screen's recipient list is now
+searchable, shows how many people you've chosen, and lets you **save the current
+selection as a group** on the spot. Clicking a group ticks all its members; you
+can still add or remove individuals afterward.
+
+**"Let me open this file."** A new checkbox, on by default, encrypts the file to
+your own key as well — so you can always open what you encrypted. Encrypting only
+to yourself, for your own storage, is fine too.
+
+**Clearer key-mixing message.** age can't put a quantum-resistant key and a
+classic key in the same file. If your selection mixes the two, Encryptor now says
+so plainly and tells you how to fix it, instead of failing with a cryptic error.
+
 ## 0.4.0
 
 **Files now save to your Downloads folder.**
