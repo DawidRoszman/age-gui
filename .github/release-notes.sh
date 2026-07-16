@@ -9,8 +9,36 @@ set -euo pipefail
 
 VERSION="${1:?usage: release-notes.sh VERSION}"
 
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CHANGELOG="$HERE/../CHANGELOG.md"
+
+# Pull this version's section out of the changelog: everything under its
+# "## <version>" heading, up to the next release heading.
+#
+# Refusing to publish without notes is deliberate. Release notes written after
+# the fact do not get written, and a release that only says "Download" tells a
+# user nothing about whether they want it.
+notes="$(awk -v v="## $VERSION" '
+  $0 == v          { found = 1; next }
+  found && /^## /  { exit }
+  found            { print }
+' "$CHANGELOG")"
+
+# Trim blank lines from both ends, so the heading below sits against the text.
+notes="$(printf '%s' "$notes" | sed -e '/./,$!d' -e :a -e '/^\n*$/{$d;N;ba' -e '}')"
+
+if [ -z "$notes" ]; then
+  echo "release-notes.sh: CHANGELOG.md has no '## $VERSION' section." >&2
+  echo "Add one before tagging; the release notes are generated from it." >&2
+  exit 1
+fi
+
 cat <<EOF
 Share secrets securely, without the command line.
+
+## What's new in $VERSION
+
+$notes
 
 ## Download
 
