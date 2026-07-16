@@ -1,6 +1,6 @@
 # Third-party licenses
 
-Age GUI is licensed under the GNU General Public License v3.0 or later; see
+Encryptor is licensed under the GNU General Public License v3.0 or later; see
 [LICENSE](LICENSE).
 
 It builds on the work below. Each of these is distributed under a permissive
